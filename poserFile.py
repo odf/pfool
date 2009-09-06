@@ -1,6 +1,10 @@
 import re
 
-class Node:
+def prop(func):
+    return property(**func())
+
+
+class Node(object):
     def __init__(self):
         self._parent = None
         self._children = []
@@ -79,6 +83,12 @@ class Node:
             yield node
 
     @property
+    def nextSibling(self):
+        c = self.parent._children
+        i = c.index(self)
+        return c[i+1] if i < len(c) else None
+
+    @property
     def subtree(self):
         yield self
         for child in self.children:
@@ -101,7 +111,7 @@ class Line(Node):
             self._nr = self.__counter[0] = self.__counter[0] + 1
         else:
             self._nr = 0
-        self.fields = content.split() if content else []
+        self.text = content
 
     def cloneSelf(self):
         return Line(" ".join(self.fields))
@@ -111,12 +121,38 @@ class Line(Node):
         cls.__counter[0] = 0
 
     @property
-    def firstField(self):
-        return self.fields[0] if self.fields else None
+    def fields(self):
+        return self._fields[:]
 
-    @property
-    def rest(self):
-        return " ".join(self.fields[1:]) if self.fields else ""
+    @prop
+    def text():
+        def fget(self):
+            return " ".join(self._fields)
+
+        def fset(self, s):
+            self._fields = s.split() if s else []
+
+        return locals()
+
+    @prop
+    def firstField():
+        def fget(self):
+            return self._fields[0] if self._fields else None
+
+        def fset(self, value):
+            self._fields[0] = value.split()[0] if value else ""
+
+        return locals()
+
+    @prop
+    def rest():
+        def fget(self):
+            return " ".join(self._fields[1:]) if self._fields else ""
+
+        def fset(self, text):
+            self._fields = self._fields[:1] + (text.split() if text else [])
+
+        return locals()
 
     def select(self, *args):
         if args:
@@ -171,7 +207,7 @@ class Actor(Node):
         return self.content.extract('channels', pattern, 'keys', 'k')
 
 
-class PoserFile:
+class PoserFile(object):
     def __init__(self, input):
         self._actorsByName = {}
         self.figureRoots = []
