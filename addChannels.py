@@ -30,10 +30,14 @@ if __name__ == "__main__":
     for body in content.figureRoots:
         for actor in body.descendants:
             channels = actor.content.select('channels').next()
+            for node in channels.children:
+                if not node.firstField in ('{', 'groups'):
+                    anchor = node
+                    break
             for name in sys.argv[3:]:
                 node = template.clone()
                 node.fields[1] = name
                 node.select('name').next().fields[1] = name
-                channels.appendChild(node)
+                anchor.prependSibling(node)
 
     content.writeTo(file(sys.argv[2], "w"))
