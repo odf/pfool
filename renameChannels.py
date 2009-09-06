@@ -41,8 +41,8 @@ if __name__ == "__main__":
 
     for node in content.root.select("figure", "linkParms"):
         parm = node.nextSibling
-        parm.text = old2new(parm.text)
+        parm.text = old2new[parm.text]
         parm = parm.nextSibling.nextSibling
-        parm.text = old2new(parm.text)
+        parm.text = old2new[parm.text]
 
     content.writeTo(file(sys.argv[2], "w"))
