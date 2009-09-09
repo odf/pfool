@@ -26,8 +26,7 @@ if __name__ == "__main__":
     channels and updates references to renamed channels.  Regular
     expression syntax is used for pattern and replacement.
 
-    Requires a properly installed Python 2.5 or newer (see
-    python.org).
+    Requires Python 2.5 or newer.
 
   Examples:
 
