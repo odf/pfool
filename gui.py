@@ -146,6 +146,7 @@ class App:
 
             # -- process
             self.resolveConflictingChannelNames(figure, pose)
+            self.injectChannels(figure, pose)
 
             # -- write output files
             Utility.writeTo(self.figOut.get(), figure)
@@ -198,8 +199,19 @@ class App:
             parm = parm.nextSibling.nextSibling
             parm.text = old2new[parm.text]
 
-            
+    def injectChannels(self, figure, pose):
+        for node in pose.root.select("actor"):
+            actor = figure.actor(node.rest)
+            if not actor:
+                continue
+            for ch in actor.content.select("channels", ".*"):
+                if not ch.firstField in ('{', 'groups'):
+                    anchor = ch
+                    break
+            for ch in node.select("channels", "targetGeom|valueParm"):
+                anchor.prependSibling(ch.clone())
 
+        
 root = Tk()
 root.title("pfool's paradise")
 
