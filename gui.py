@@ -5,6 +5,20 @@ import tkSimpleDialog
 from poserFile import *
 
 
+class EchoDict(dict):
+    def get(self, key):
+        if dict.has_key(self, key):
+            return dict.get(self, key)
+        else:
+            return key
+
+    def __getitem__(self, key):
+        if dict.has_key(self, key):
+            return dict.__getitem__(self, key)
+        else:
+            return key
+
+
 class Utility:
     @classmethod
     def readFrom(cls, filename):
@@ -18,6 +32,7 @@ class Utility:
         fp = file(filename, "w")
         content.writeTo(fp)
         fp.close()
+
 
 class MessageDialog(tkSimpleDialog.Dialog):
     def __init__(self, parent, title = None, message = None):
@@ -125,11 +140,65 @@ class App:
           "Input pose = " + self.injIn.get(),
           "Output pose = " + self.injOut.get()
         ])):
+            # -- read input files
             figure = Utility.readFrom(self.figIn.get())
             pose = Utility.readFrom(self.injIn.get())
+
+            # -- process
+            self.resolveConflictingChannelNames(figure, pose)
+
+            # -- write output files
             Utility.writeTo(self.figOut.get(), figure)
             Utility.writeTo(self.injOut.get(), pose)
 
+            MessageDialog(self.master, message = "Done!")
+
+    def resolveConflictingChannelNames(self, figure, pose):
+        # -- collect channel names present in figure
+        usedChannels = set()
+        for node in figure.root.select("actor", "channels",
+                                       "targetGeom|valueParm"):
+            usedChannels.add(node.rest)
+
+        # -- determine new names for conflicting channels in pose
+        old2new = EchoDict()
+        for node in pose.root.select("actor", "channels",
+                                     "targetGeom|valueParm"):
+            name = node.rest
+            if name in usedChannels and not old2new.has_key(name):
+                for i in xrange(1000):
+                    newName = "xtra%03d" % i
+                    if newName not in usedChannels:
+                        old2new[name] = newName
+                        usedChannels.add(newName)
+                        break
+                else:
+                    raise "That's too many channels, dude!"
+
+        # -- change names in channel definitions
+        for node in pose.root.select("actor", "channels",
+                                     "targetGeom|valueParm"):
+            node.rest = old2new[node.rest]
+
+        # -- change names in dependent parameter (ERC) instructions
+        for node in pose.root.select("actor", "channels", ".*", "valueOp.*"):
+            source = node.nextSibling.nextSibling.nextSibling
+            source.firstField = old2new[source.firstField]
+
+        # -- change names in dial groups
+        for node in pose.root.select("actor", "channels", "groups"):
+            for desc in node.descendants:
+                if desc.firstField == "parmNode":
+                    desc.rest = old2new[desc.rest]
+
+        # -- change names in parameter linking instructions
+        for node in pose.root.select("figure", "linkParms"):
+            parm = node.nextSibling
+            parm.text = old2new[parm.text]
+            parm = parm.nextSibling.nextSibling
+            parm.text = old2new[parm.text]
+
+            
 
 root = Tk()
 root.title("pfool's paradise")

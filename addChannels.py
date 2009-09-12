@@ -27,17 +27,17 @@ template = PoserFile(TEMPLATE_TEXT.splitlines()).root.firstChild
 if __name__ == "__main__":
     content = PoserFile(file(sys.argv[1]))
     
-    for body in content.figureRoots:
-        for actor in body.descendants:
-            channels = actor.content.select('channels').next()
-            for node in channels.children:
-                if not node.firstField in ('{', 'groups'):
-                    anchor = node
-                    break
-            for name in sys.argv[3:]:
-                node = template.clone()
-                node.fields[1] = name
-                node.select('name').next().fields[1] = name
-                anchor.prependSibling(node)
+    for channels in content.root.select("actor", "channels"):
+        if re.match('^BODY(:\d+)?$', channels.parent.rest):
+            continue
+        for node in channels.children:
+            if not node.firstField in ('{', 'groups'):
+                anchor = node
+                break
+        for name in sys.argv[3:]:
+            node = template.clone()
+            node.rest = name
+            node.select('name').next().rest = name
+            anchor.prependSibling(node)
 
     content.writeTo(file(sys.argv[2], "w"))
