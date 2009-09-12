@@ -86,7 +86,10 @@ class Node(object):
     def nextSibling(self):
         c = self.parent._children
         i = c.index(self)
-        return c[i+1] if i < len(c) else None
+        if i < len(c):
+            return c[i+1]
+        else:
+            return None
 
     @property
     def subtree(self):
@@ -130,27 +133,30 @@ class Line(Node):
             return " ".join(self._fields)
 
         def fset(self, s):
-            self._fields = s.split() if s else []
+            self._fields = (s or "").split()
 
         return locals()
 
     @prop
     def firstField():
         def fget(self):
-            return self._fields[0] if self._fields else None
+            return (self._fields or [None])[0]
 
         def fset(self, value):
-            self._fields[0] = value.split()[0] if value else ""
+            if value:
+                self._fields[0] = value.split()[0]
+            else:
+                self._fields[0] = None
 
         return locals()
 
     @prop
     def rest():
         def fget(self):
-            return " ".join(self._fields[1:]) if self._fields else ""
+            return " ".join(self._fields[1:])
 
         def fset(self, text):
-            self._fields = self._fields[:1] + (text.split() if text else [])
+            self._fields = self._fields[:1] + (text or "").split()
 
         return locals()
 
@@ -182,7 +188,10 @@ class Line(Node):
         return self._nr
 
     def __str__(self):
-        parent = self.parent.nr if self.parent else 0
+        if self.parent:
+            parent = self.parent.nr
+        else:
+            parent = 0
         return ("%06d <%06d> %s %s" %
                 (self.nr, parent, self.firstField, self.rest))
 
