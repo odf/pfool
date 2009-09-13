@@ -7,6 +7,10 @@ class Actor(line: Line) extends Node {
     
     def name = _content.args
     
+    override def parent = super.parent.asInstanceOf[Actor]
+    
+    override def children = super.children.map(_.asInstanceOf[Actor])
+    
     override def toString = content.toString
     
     def extractChannelValues(pattern: String) =

@@ -1,5 +1,7 @@
 package org.gavrog.pfool
 
+import scala.util.matching.Regex
+
 object Line {
     var counter = 0
     
@@ -10,7 +12,7 @@ class Line(content: String, useCounter: Boolean) extends Node {
     def this(content: String) = this(content, false)
     
     val _nr = if (useCounter) { Line.counter += 1; Line.counter } else 0
-    var key = ""
+    var _key = ""
     var _args = new Array[String](0)
 
     text = content
@@ -34,6 +36,13 @@ class Line(content: String, useCounter: Boolean) extends Node {
         }
     }
     
+    def key = _key
+    
+    def key_=(s: String) {
+        if (s == null || s.trim.length == 0) key = ""
+        else key = s.trim.split("\\s+")(0)
+    }
+    
     def args = _args.mkString(" ")
     
     def args_=(s: String) { _args = s.trim.split("\\s+") }
@@ -46,7 +55,8 @@ class Line(content: String, useCounter: Boolean) extends Node {
     }
     
     def select(pattern: String*): Stream[Line] = {
-        def matches(node: Line, pattern: String) = node.key == pattern
+        def matches(node: Line, pattern: String) =
+            new Regex("(%s)$" format pattern).findPrefixOf(node.key) != None
       
         if (pattern.size == 0) Stream.cons(this, Stream.empty)
         else for { child <- children if matches(child, pattern(0))
