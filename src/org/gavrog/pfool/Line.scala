@@ -17,6 +17,10 @@ class Line(content: String, useCounter: Boolean) extends Node {
     
     override def cloneSelf = new Line(text)
     
+    override def parent = super.parent.asInstanceOf[Line]
+    
+    override def children = super.children.map(_.asInstanceOf[Line])
+    
     def text = key + " " + args
     
     def text_=(s: String) {
@@ -37,16 +41,22 @@ class Line(content: String, useCounter: Boolean) extends Node {
     def nr = _nr
     
     override def toString = {
-        val pnr = if (parent.isInstanceOf[Line]) parent.asInstanceOf[Line].nr
-                  else 0
+        val pnr = if (parent != null) parent.nr else 0
         "%06d <%06d> %s %s" format (nr, pnr, key, args)
     }
     
     def select(pattern: String*): Stream[Line] = {
+        def matches(node: Line, pattern: String) = node.key == pattern
+      
         if (pattern.size == 0) Stream.cons(this, Stream.empty)
-        else for { child <- _children.toStream.map(_.asInstanceOf[Line])
-                   if child.key == pattern(0)
+        else for { child <- children if matches(child, pattern(0))
                    node <- child.select(pattern.drop(1) :_*) }
-            yield node.asInstanceOf[Line]
+            yield node
+    }
+    
+    def extract(pattern: String*) = cloneSelected(select(pattern :_*))
+    
+    def delete(pattern: String*) {
+        for (node <- select(pattern :_*).toList) node.unlink
     }
 }

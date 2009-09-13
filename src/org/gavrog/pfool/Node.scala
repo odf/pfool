@@ -4,11 +4,11 @@ import scala.collection.mutable.{HashSet, ListBuffer, Queue}
 
 class Node {
     private var _parent: Node = null
-    protected val _children = new ListBuffer[Node]()
+    protected val _children = new ListBuffer[Node]
     
     def parent = _parent
     
-    def children = _children.elements
+    def children = _children.toStream
     
     def firstChild = if (_children.size > 0) _children(0) else null
     
@@ -21,7 +21,7 @@ class Node {
     def subtree: Stream[Node] = Stream.cons(this, descendants)
 
     def descendants: Stream[Node] =
-        for (child <- _children.toStream; node <- child.subtree) yield node
+        for (child <- children; node <- child.subtree) yield node
     
     def insertChild(position: Int, child: Node) {
         assert(child.parent == null)
@@ -58,9 +58,9 @@ class Node {
         root
     }
     
-    def cloneSelected(elements: Seq[Node]) = {
-        val marked = new HashSet[Node]()
-        val queue = new Queue[Node]()
+    def cloneSelected(elements: Iterable[Node]) = {
+        val marked = new HashSet[Node]
+        val queue = new Queue[Node]
 
         queue ++= elements
         while (!queue.isEmpty) {
