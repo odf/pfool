@@ -23,7 +23,13 @@ class Line(content: String, useCounter: Boolean) extends Node {
     
     override def children = super.children.map(_.asInstanceOf[Line])
     
-    def text = key + " " + args
+    override def nextSibling = super.nextSibling.asInstanceOf[Line]
+    
+    override def subtree = super.subtree.map(_.asInstanceOf[Line])
+    
+    override def descendants = super.descendants.map(_.asInstanceOf[Line])
+    
+    def text = (key :: _args.toList).mkString(" ")
     
     def text_=(s: String) {
         val fields = s.trim.split("\\s+")
@@ -39,8 +45,8 @@ class Line(content: String, useCounter: Boolean) extends Node {
     def key = _key
     
     def key_=(s: String) {
-        if (s == null || s.trim.length == 0) key = ""
-        else key = s.trim.split("\\s+")(0)
+        if (s == null || s.trim.length == 0) _key = ""
+        else _key = s.trim.split("\\s+")(0)
     }
     
     def args = _args.mkString(" ")

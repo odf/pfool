@@ -12,6 +12,8 @@ class Node {
     
     def firstChild = if (_children.size > 0) _children(0) else null
     
+    def numberOfChildren = _children.size
+    
     def nextSibling = {
         val c = parent._children
         val i = c.indexOf(this)
@@ -26,11 +28,12 @@ class Node {
     def insertChild(position: Int, child: Node) {
         assert(child.parent == null)
         _children.insert(position, child)
+        child._parent = this
     }
     
-    def appendChild(child: Node) = _children.append(child)
+    def appendChild(child: Node) = insertChild(numberOfChildren, child)
     
-    def prependChild(child: Node) = _children.prepend(child)
+    def prependChild(child: Node) = insertChild(0, child)
 
     def appendSibling(child: Node) {
         parent.insertChild(parent._children.indexOf(this) + 1, child)
