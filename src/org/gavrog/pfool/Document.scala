@@ -2,8 +2,7 @@ package org.gavrog.pfool
 
 import java.io.{Writer, FileWriter}
 import scala.io.Source
-import scala.collection.mutable.{HashMap, MultiMap, Set, Stack}
-import scala.util.matching.Regex
+import scala.collection.mutable.Stack
 
 class Document(input: Source) {
     def this(filename: String) = this(Source.fromFile(filename))
@@ -65,7 +64,13 @@ class Document(input: Source) {
         target.flush
         target.close
     }
-                                          
+
+    def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
+    
+    def channelNames(types: String*) = {
+        val pattern = types.mkString("|")
+        Set(root.select("actor", "channels", pattern).map(_.args) :_*)
+    }
     
     def renameChannels(mapping: PartialFunction[String, String]): Unit =
         renameChannels(mapping, List("targetGeom", "valueParm"))
