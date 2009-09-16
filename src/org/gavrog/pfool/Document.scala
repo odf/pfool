@@ -11,9 +11,7 @@ class Document(input: Source) {
     
     parse(input)
 
-    val _actorsByName =
-        Map() ++ (for (node <- root.select("actor|prop|controlProp", "name"))
-                      yield (node.parent.args -> new Actor(node.parent)))
+    val _actorsByName = Map(actorNodes.map(n => n.args -> new Actor(n)) :_*)
     val _figureRoots =
         root.select("figure", "root").map(_.args).map(_actorsByName)
     for (child <- root.select("figure", "addChild"))
@@ -40,6 +38,9 @@ class Document(input: Source) {
     def actors = _actorsByName.values
     
     def nodes = root.descendants
+    
+    def actorNodes =
+        root.select("actor|prop|controlProp").filter(!_.select("name").isEmpty)
     
     def dumpHierarchy {
         def write(actor: Actor, level: Int) {
@@ -91,10 +92,9 @@ class Document(input: Source) {
         }
       
         //-- change names in dial groups
-        for { node <- root.select("actor", "channels", "groups")
-              desc <- node.descendants if desc.key == "parmNode"
-        }
-            desc.args = old2new(desc.args)
+        for (node <- root.select("actor", "channels", "groups",
+                                 "*", "parmNode"))
+            node.args = old2new(node.args)
           
         //-- changes names in parameter linking instructions
         for (node <- root.select("figure", "linkParms")) {
