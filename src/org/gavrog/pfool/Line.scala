@@ -19,6 +19,8 @@ class Line(content: String, useCounter: Boolean) extends Node {
     
     override def cloneSelf = new Line(text)
     
+    override def inheritsMark = List("{", "}").contains(key)
+    
     override def parent = super.parent.asInstanceOf[Line]
     
     override def children = super.children.map(_.asInstanceOf[Line])
@@ -61,13 +63,18 @@ class Line(content: String, useCounter: Boolean) extends Node {
     }
     
     def select(pattern: String*): Stream[Line] = {
-        def matches(node: Line, pattern: String) =
-            new Regex("(%s)$" format pattern).findPrefixOf(node.key) != None
+        def matches(node: Line, pattern: String) = {
+            val test = if (pattern contains " ") node.text else node.key
+            new Regex("(%s)$" format pattern).findPrefixOf(test) != None
+        }
       
-        if (pattern.size == 0) Stream.cons(this, Stream.empty)
-        else for { child <- children if matches(child, pattern(0))
-                   node <- child.select(pattern.drop(1) :_*) }
-            yield node
+        if (pattern.isEmpty) Stream.cons(this, Stream.empty)
+        else {
+          val candidates = if (pattern(0) == "*") subtree
+                           else children.filter(matches(_, pattern(0)))
+          for { cand <- candidates
+                node <- cand.select(pattern.drop(1) :_*) } yield node
+        }
     }
     
     def extract(pattern: String*) = cloneSelected(select(pattern :_*))
