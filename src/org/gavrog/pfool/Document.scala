@@ -72,36 +72,4 @@ class Document(input: Source) {
         val pattern = types.mkString("|")
         Set(root.select("actor", "channels", pattern).map(_.args) :_*)
     }
-    
-    def renameChannels(mapping: PartialFunction[String, String]): Unit =
-        renameChannels(mapping, List("targetGeom", "valueParm"))
-    
-    def renameChannels(mapping: PartialFunction[String, String],
-                       types: Iterable[String]) {
-        val pattern = types.mkString("|")
-        def old2new(s: String) = if (mapping.isDefinedAt(s)) mapping(s) else s
-      
-        //-- change names in channel definitions
-        for (node <- root.select("actor", "channels", pattern))
-            node.args = old2new(node.args)
-      
-        //-- change names in dependent parameter (ERC) instructions
-        for (node <- root.select("actor", "channels", ".*", "valueOp.*")) {
-            val source = node.nextSibling.nextSibling.nextSibling
-            source.text = old2new(source.text)
-        }
-      
-        //-- change names in dial groups
-        for (node <- root.select("actor", "channels", "groups",
-                                 "*", "parmNode"))
-            node.args = old2new(node.args)
-          
-        //-- changes names in parameter linking instructions
-        for (node <- root.select("figure", "linkParms")) {
-            val p1 = node.nextSibling
-            val p2 = p1.nextSibling.nextSibling
-            p1.text = old2new(p1.text)
-            p2.text = old2new(p2.text)
-        }
-    }
 }

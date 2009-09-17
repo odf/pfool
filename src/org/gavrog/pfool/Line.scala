@@ -31,6 +31,8 @@ class Line(content: String, useCounter: Boolean) extends Node {
     
     override def descendants = super.descendants.map(_.asInstanceOf[Line])
     
+    override def clone = super.clone.asInstanceOf[Line]
+    
     def text = (key :: _args.toList).mkString(" ")
     
     def text_=(s: String) {
@@ -70,8 +72,13 @@ class Line(content: String, useCounter: Boolean) extends Node {
       
         if (pattern.isEmpty) Stream.cons(this, Stream.empty)
         else {
-          val candidates = if (pattern(0) == "*") subtree
-                           else children.filter(matches(_, pattern(0)))
+          val candidates =
+              if (pattern(0) == "*")
+                  subtree
+              else if (pattern(0)(0) == '!')
+                  children.filter(!matches(_, pattern(0).drop(1)))
+              else
+                  children.filter(matches(_, pattern(0)))
           for { cand <- candidates
                 node <- cand.select(pattern.drop(1) :_*) } yield node
         }

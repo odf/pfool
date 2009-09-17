@@ -10,8 +10,6 @@ class Node {
     
     def children = _children.toStream
     
-    def firstChild = if (_children.size > 0) _children(0) else null
-    
     def numberOfChildren = _children.size
     
     def nextSibling = {
