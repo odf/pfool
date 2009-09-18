@@ -12,7 +12,4 @@ class Actor(line: Line) extends Node {
     override def children = super.children.map(_.asInstanceOf[Actor])
     
     override def toString = content.toString
-    
-    def extractChannelValues(pattern: String) =
-        content.extract("channels", pattern, "keys", "k")
 }

@@ -4,9 +4,12 @@ import java.io.{Writer, FileWriter}
 import scala.io.Source
 import scala.collection.mutable.Stack
 
+object Document {
+    def fromString(text: String) = new Document(Source fromString text)
+    def fromFile(filename: String) = new Document(Source fromFile filename)
+}
+
 class Document(input: Source) {
-    def this(filename: String) = this(Source.fromFile(filename))
-  
     val _root: Line = new Line("")
     
     parse(input)
@@ -71,5 +74,14 @@ class Document(input: Source) {
     def channelNames(types: String*) = {
         val pattern = types.mkString("|")
         Set(root.select("actor", "channels", pattern).map(_.args) :_*)
+    }
+
+    def extract(pattern: String*) = {
+        val result = Document.fromString("{_version_{_number 4.1_}_Figure_{_}_}"
+            split "_" mkString "\n")
+        val anchor = result.root.select("Figure")(0)
+        for (node <- root.extract(pattern :_*).select("![{}]"))
+             anchor.prependSibling(node.clone)
+        result
     }
 }

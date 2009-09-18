@@ -84,7 +84,8 @@ class Line(content: String, useCounter: Boolean) extends Node {
         }
     }
     
-    def extract(pattern: String*) = cloneSelected(select(pattern :_*))
+    def extract(pattern: String*) =
+        cloneSelected(select(pattern :_*)).asInstanceOf[Line]
     
     def delete(pattern: String*) {
         for (node <- select(pattern :_*).toList) node.unlink
