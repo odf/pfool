@@ -10,6 +10,9 @@ object Document {
 }
 
 class Document(input: Source) {
+    def this() = this(Source.fromString("{_version_{_number 4.1_}_Figure_{_}_}"
+                    split "_" mkString "\n"))
+
     val _root: Line = new Line("")
     
     parse(input)
@@ -77,8 +80,7 @@ class Document(input: Source) {
     }
 
     def extract(pattern: String*) = {
-        val result = Document.fromString("{_version_{_number 4.1_}_Figure_{_}_}"
-            split "_" mkString "\n")
+        val result = new Document
         val anchor = result.root.select("Figure")(0)
         for (node <- root.extract(pattern :_*).select("![{}]"))
              anchor.prependSibling(node.clone)
