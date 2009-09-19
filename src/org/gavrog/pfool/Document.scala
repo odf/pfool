@@ -10,21 +10,9 @@ object Document {
 }
 
 class Document(input: Source) {
-    def this() = this(Source.fromString("{_version_{_number 4.1_}_Figure_{_}_}"
-                    split "_" mkString "\n"))
-
     val _root: Line = new Line("")
     
-    parse(input)
-
-    val _actorsByName = Map(actorNodes.map(n => n.args -> new Actor(n)) :_*)
-    val _figureRoots =
-        root.select("figure", "root").map(_.args).map(_actorsByName)
-    for (child <- root.select("figure", "addChild"))
-        _actorsByName(child.nextSibling.text)
-            .appendChild(_actorsByName(child.args))
-
-    private def parse(input: Source) {
+    {
         Line.resetCounter
         var last = _root
         val stack = new Stack[Line]()
@@ -37,6 +25,20 @@ class Document(input: Source) {
         }
     }
     
+    val _actorsByName = Map(root.select("actor|prop|controlProp")
+                                .filter(!_.select("name").isEmpty)
+                                .map(n => n.args -> new Actor(n)) :_*)
+    val _figureRoots = root.select("figure", "root")
+                           .map(_.args).map(_actorsByName)
+    for (child <- root.select("figure", "addChild"))
+        _actorsByName(child.nextSibling.text)
+            .appendChild(_actorsByName(child.args))
+
+    //-- public interface starts here
+    
+    def this() = this(Source.fromString("{_version_{_number 4.1_}_Figure_{_}_}"
+                    split "_" mkString "\n"))
+
     def root = _root
     
     def actor(name: String) = _actorsByName(name)
@@ -44,9 +46,6 @@ class Document(input: Source) {
     def actors = _actorsByName.values
     
     def nodes = root.descendants
-    
-    def actorNodes =
-        root.select("actor|prop|controlProp").filter(!_.select("name").isEmpty)
     
     def dumpHierarchy {
         def write(actor: Actor, level: Int) {

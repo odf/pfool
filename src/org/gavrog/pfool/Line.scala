@@ -57,6 +57,11 @@ class Line(content: String, useCounter: Boolean) extends Node {
     
     def args_=(s: String) { _args = s.trim.split("\\s+") }
     
+    def arg = new Object {
+        def apply(i: Int) = _args(i)
+        def update(i: Int, s: String) { _args(i) = s }
+    }
+    
     def nr = _nr
     
     override def toString = {

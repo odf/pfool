@@ -50,4 +50,35 @@ object Operations {
         for (a <- doc.actors if !a.name.startsWith("BODY:"))
             addChannels(a.content, names, template)
     }
+    
+    private def format(x: Double) = "%.6f" format x
+    
+    def shiftPoint(node: Line, s: Double*) =
+        for (i <- 0 to 2) node.arg(i) = format(node.arg(i).toDouble + s(i))
+    
+    def shiftChannel(node: Line, s: Double*) {
+        for (child <- node.select("center")) shiftPoint(child, s :_*)
+
+        //-- shift centers of inclusion/exclusion spheres
+        for (child <- node.select("(-?\\d+(\\.\\d+)? ){3}1(\\.\\d+)?")) {
+            child.key = format(child.key.toDouble + s(0))
+            for (i <- 0 to 1) {
+                child.arg(i) = format(child.arg(i).toDouble + s(i))
+            }
+        }
+    }
+    
+    def shiftActor(actor: Actor, s: Double*) {
+        for (node <- actor.content.select("channels", ".*"))
+            if (!node.select("otherActor " + actor.parent.name).isEmpty)
+                shiftChannel(node, s :_*)
+        for (node <- actor.parent.content.select("channels", ".*"))
+            if (!node.select("otherActor " + actor.name).isEmpty)
+                shiftChannel(node, s :_*)
+        for (node <- actor.content.select("origin|endPoint"))
+            shiftPoint(node, s :_*)
+    }
+    
+    def shiftActorAndDescendants(actor: Actor, s: Double*) =
+        for (bone <- actor.subtree) shiftActor(bone, s :_*)
 }
