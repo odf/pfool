@@ -1,5 +1,7 @@
 package org.gavrog.pfool
 
+import scala.collection.mutable.ListBuffer
+
 import scala.util.matching.Regex
 
 object Line {
@@ -8,8 +10,49 @@ object Line {
     def resetCounter { counter = 0 }
 }
 
-class Line(content: String, useCounter: Boolean) extends Node {
+class Line(content: String, useCounter: Boolean) extends BasicNode {
+    type T = Line
+  
     def this(content: String) = this(content, false)
+    
+    private var _parent: T = null
+    protected val _children = new ListBuffer[T]
+    
+    def parent: T = _parent
+    
+    def children = _children.toStream
+    
+    def nextSibling = {
+        val c = parent._children
+        val i = c.indexOf(this)
+        if (i < c.size) c(i+1) else null
+    }
+    
+    def insertChild(position: Int, child: T) {
+        assert(child.parent == null)
+        _children.insert(position, child)
+        child._parent = this
+    }
+    
+    def appendChild(child: T) = insertChild(_children.size, child)
+    
+    def prependChild(child: T) = insertChild(0, child)
+
+    def appendSibling(child: T) {
+        parent.insertChild(parent._children.indexOf(this) + 1, child)
+    }
+
+    def prependSibling(child: T) {
+        parent.insertChild(parent._children.indexOf(this), child)
+    }
+    
+    def unlink {
+        if (parent != null) {
+            val c = parent._children
+            c.remove(c.indexOf(this))
+        }
+        _parent = null
+    }
     
     val _nr = if (useCounter) { Line.counter += 1; Line.counter } else 0
     var _key = ""
@@ -17,21 +60,9 @@ class Line(content: String, useCounter: Boolean) extends Node {
 
     text = content
     
-    override def cloneSelf = new Line(text)
+    protected def cloneSelf = new Line(text)
     
-    override def inheritsMark = List("{", "}").contains(key)
-    
-    override def parent = super.parent.asInstanceOf[Line]
-    
-    override def children = super.children.map(_.asInstanceOf[Line])
-    
-    override def nextSibling = super.nextSibling.asInstanceOf[Line]
-    
-    override def subtree = super.subtree.map(_.asInstanceOf[Line])
-    
-    override def descendants = super.descendants.map(_.asInstanceOf[Line])
-    
-    override def clone = super.clone.asInstanceOf[Line]
+    protected override def inheritsMark = List("{", "}").contains(key)
     
     def text = (key :: _args.toList).mkString(" ")
     
@@ -69,8 +100,8 @@ class Line(content: String, useCounter: Boolean) extends Node {
         "%06d <%06d> %s %s" format (nr, pnr, key, args)
     }
     
-    def select(pattern: String*): Stream[Line] = {
-        def matches(node: Line, pattern: String) = {
+    def select(pattern: String*): Stream[T] = {
+        def matches(node: T, pattern: String) = {
             val test = if (pattern contains " ") node.text else node.key
             new Regex("(%s)$" format pattern).findPrefixOf(test) != None
         }
@@ -89,8 +120,7 @@ class Line(content: String, useCounter: Boolean) extends Node {
         }
     }
     
-    def extract(pattern: String*) =
-        cloneSelected(select(pattern :_*)).asInstanceOf[Line]
+    def extract(pattern: String*) = cloneSelected(select(pattern :_*))
     
     def delete(pattern: String*) {
         for (node <- select(pattern :_*).toList) node.unlink

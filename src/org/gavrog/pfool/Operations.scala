@@ -69,9 +69,10 @@ object Operations {
     }
     
     def shiftActor(actor: Actor, s: Double*) {
-        for (node <- actor.content.select("channels", ".*"))
+        for (node <- actor.content.select("channels", ".*")) {
             if (!node.select("otherActor " + actor.parent.name).isEmpty)
                 shiftChannel(node, s :_*)
+        }
         for (node <- actor.parent.content.select("channels", ".*"))
             if (!node.select("otherActor " + actor.name).isEmpty)
                 shiftChannel(node, s :_*)

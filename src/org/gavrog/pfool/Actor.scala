@@ -1,21 +1,35 @@
 package org.gavrog.pfool
 
-class Actor(line: Line) extends Node {
+import scala.collection.mutable.ListBuffer
+
+class Actor(line: Line) extends BasicNode {
+    type T = Actor
+  
     val _content = line
     
     def content = _content
     
     def name = _content.args
     
-    override def parent = super.parent.asInstanceOf[Actor]
+    private var _parent: T = null
+    protected val _children = new ListBuffer[T]
     
-    override def children = super.children.map(_.asInstanceOf[Actor])
+    def parent = _parent
     
-    override def nextSibling = super.nextSibling.asInstanceOf[Actor]
+    def children = _children.toStream
     
-    override def subtree = super.subtree.map(_.asInstanceOf[Actor])
+    def appendChild(child: T) {
+        _children.append(child)
+        child._parent = this
+    }
     
-    override def descendants = super.descendants.map(_.asInstanceOf[Actor])
+    def unlink {
+        if (parent != null) {
+            val c = parent._children
+            c.remove(c.indexOf(this))
+        }
+        _parent = null
+    }
     
-    override def toString = content.toString
+    def cloneSelf = new Actor(line)
 }
