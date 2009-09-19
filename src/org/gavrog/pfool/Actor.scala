@@ -32,4 +32,7 @@ class Actor(line: Line) extends BasicNode {
     }
     
     def cloneSelf = new Actor(line)
+    
+    def matches(pattern: String) =
+        "(%s)$".format(pattern).r.findPrefixOf(name) != None
 }

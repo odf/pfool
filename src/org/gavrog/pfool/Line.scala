@@ -100,29 +100,8 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
         "%06d <%06d> %s %s" format (nr, pnr, key, args)
     }
     
-    def select(pattern: String*): Stream[T] = {
-        def matches(node: T, pattern: String) = {
-            val test = if (pattern contains " ") node.text else node.key
-            new Regex("(%s)$" format pattern).findPrefixOf(test) != None
-        }
-      
-        if (pattern.isEmpty) Stream.cons(this, Stream.empty)
-        else {
-          val candidates =
-              if (pattern(0) == "*")
-                  subtree
-              else if (pattern(0)(0) == '!')
-                  children.filter(!matches(_, pattern(0).drop(1)))
-              else
-                  children.filter(matches(_, pattern(0)))
-          for { cand <- candidates
-                node <- cand.select(pattern.drop(1) :_*) } yield node
-        }
-    }
-    
-    def extract(pattern: String*) = cloneSelected(select(pattern :_*))
-    
-    def delete(pattern: String*) {
-        for (node <- select(pattern :_*).toList) node.unlink
+    def matches(pattern: String) = {
+        val test = if (pattern contains " ") text else key
+        "(%s)$".format(pattern).r.findPrefixOf(test) != None
     }
 }
