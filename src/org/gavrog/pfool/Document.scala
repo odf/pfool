@@ -77,12 +77,14 @@ class Document(input: Source) {
         val pattern = types.mkString("|")
         Set(root.select("actor", "channels", pattern).map(_.args) :_*)
     }
-
-    def extract(pattern: String*) = {
+    
+    def extract(nodes: Iterable[Line]) = {
         val result = new Document
         val anchor = result.root.select("Figure")(0)
-        for (node <- root.extract(pattern :_*).select("![{}]"))
+        for (node <- root.cloneSelected(nodes).select("![{}]"))
              anchor.prependSibling(node.clone)
         result
     }
+
+    def extract(pattern: String*): Document = extract(root.select(pattern :_*))
 }

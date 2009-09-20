@@ -56,7 +56,7 @@ trait BasicNode {
     def matches(pattern: String): Boolean
       
     def select(pattern: String*): Stream[T] = {
-        if (pattern.isEmpty) Stream.cons(this.asInstanceOf[T], Stream.empty)
+        if (pattern.isEmpty) Stream(this.asInstanceOf[T])
         else {
           val candidates =
               if (pattern(0) == "*")
