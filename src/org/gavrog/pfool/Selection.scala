@@ -17,18 +17,16 @@ class Matcher[T](f: T => Boolean) extends (T => Boolean) {
     
     def unary_! = new Matcher[T](!this(_))
     
-    def & (that: Matcher[T]) = new Matcher[T](n => this(n) && that(n))
+    def & (that: T => Boolean) = new Matcher[T](n => this(n) && that(n))
     
-    def | (that: Matcher[T]) = new Matcher[T](n => this(n) || that(n))
+    def | (that: T => Boolean) = new Matcher[T](n => this(n) || that(n))
     
-    def ^ (that: Matcher[T]) = new Matcher[T](n => this(n) ^ that(n))
+    def ^ (that: T => Boolean) = new Matcher[T](n => this(n) ^ that(n))
 }
 
 
-class Selection[T <: { def children: Iterable[T] }](
-                base: Selection[T],
-                axis: T => Iterable[T],
-                test: T => Boolean)
+class Selection[T <: { def children: Iterable[T]; def parent: Option[T] }](
+                base: Selection[T], axis: T => Iterable[T], test: T => Boolean)
     extends Iterable[T]
 {
     def this(base: Selection[T], axis: T => Iterable[T]) =

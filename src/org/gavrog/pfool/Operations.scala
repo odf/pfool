@@ -8,6 +8,21 @@ object Operations {
     
     def renameChannels(doc: Document, mapping: PartialFunction[String, String],
                        types: Iterable[String]) {
+        implicit def grabLine(x: Option[Line]) = new Object {
+            def nextSibling = x match {
+                case Some(line) => line.nextSibling
+                case None => None
+            }
+            def text = x match {
+                case Some(line) => line.text
+                case None => ""
+            }
+            def text_=(s: String) = x match {
+                case Some(line) => line.text = s
+                case None => ()
+            }
+        }
+  
         val pattern = types.mkString("|")
         def old2new(s: String) = if (mapping.isDefinedAt(s)) mapping(s) else s
       
@@ -68,16 +83,19 @@ object Operations {
         }
     }
     
-    def shiftActor(actor: Actor, s: Double*) {
-        for (node <- actor.content.select("channels", ".*")) {
-            if (!node.select("otherActor " + actor.parent.name).isEmpty)
-                shiftChannel(node, s :_*)
+    def shiftActor(actor: Actor, s: Double*) = actor.parent match {
+        case Some(parent) => {
+            for (node <- actor.content.select("channels", ".*")) {
+                if (!node.select("otherActor " + parent.name).isEmpty)
+                    shiftChannel(node, s :_*)
+            }
+            for (node <- parent.content.select("channels", ".*"))
+                if (!node.select("otherActor " + actor.name).isEmpty)
+                    shiftChannel(node, s :_*)
+            for (node <- actor.content.select("origin|endPoint"))
+                shiftPoint(node, s :_*)
         }
-        for (node <- actor.parent.content.select("channels", ".*"))
-            if (!node.select("otherActor " + actor.name).isEmpty)
-                shiftChannel(node, s :_*)
-        for (node <- actor.content.select("origin|endPoint"))
-            shiftPoint(node, s :_*)
+        case None => ()
     }
     
     def shiftActorAndDescendants(actor: Actor, s: Double*) =

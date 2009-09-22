@@ -11,7 +11,7 @@ class Actor(line: Line) extends BasicNode {
     
     def name = _content.args
     
-    private var _parent: T = null
+    private var _parent: Option[T] = None
     protected val _children = new ListBuffer[T]
     
     def parent = _parent
@@ -20,15 +20,15 @@ class Actor(line: Line) extends BasicNode {
     
     def appendChild(child: T) {
         _children.append(child)
-        child._parent = this
+        child._parent = Some(this)
     }
     
-    def unlink {
-        if (parent != null) {
-            val c = parent._children
+    def unlink = parent match {
+        case Some(n) => {
+            val c = n._children
             c.remove(c.indexOf(this))
         }
-        _parent = null
+        case None => ()
     }
     
     def cloneSelf = new Actor(line)

@@ -5,7 +5,7 @@ import scala.collection.mutable.{HashSet, Queue}
 trait BasicNode {
     type T <: BasicNode
     
-    def parent: T
+    def parent: Option[T]
     
     def children: Stream[T]
     
@@ -39,7 +39,10 @@ trait BasicNode {
                 marked += node
                 for (child <- node.children if child.inheritsMark)
                     marked += child
-                if (node != this) queue += node.parent
+                if (node != this) node.parent match {
+                    case Some(p) => queue += p
+                    case None => ()
+                }
             }
         }
         

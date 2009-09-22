@@ -15,43 +15,49 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
   
     def this(content: String) = this(content, false)
     
-    private var _parent: T = null
+    private var _parent: Option[T] = None
     protected val _children = new ListBuffer[T]
     
-    def parent: T = _parent
+    def parent: Option[T] = _parent
     
     def children = _children.toStream
     
-    def nextSibling = {
-        val c = parent._children
-        val i = c.indexOf(this)
-        if (i < c.size) c(i+1) else null
+    def nextSibling = parent match {
+        case None => None
+        case Some(n) => {
+            val c = n._children
+            val i = c.indexOf(this)
+            if (i < c.size) Some(c(i+1)) else None
+        }
     }
     
     def insertChild(position: Int, child: T) {
-        assert(child.parent == null)
+        assert(child.parent == None)
         _children.insert(position, child)
-        child._parent = this
+        child._parent = Some(this)
     }
     
     def appendChild(child: T) = insertChild(_children.size, child)
     
     def prependChild(child: T) = insertChild(0, child)
 
-    def appendSibling(child: T) {
-        parent.insertChild(parent._children.indexOf(this) + 1, child)
+    def appendSibling(child: T) = parent match {
+        case Some(n) => n.insertChild(n._children.indexOf(this) + 1, child)
+        case None => ()
     }
 
-    def prependSibling(child: T) {
-        parent.insertChild(parent._children.indexOf(this), child)
+    def prependSibling(child: T) = parent match {
+        case Some(n) => n.insertChild(n._children.indexOf(this), child)
+        case None => ()
     }
-    
-    def unlink {
-        if (parent != null) {
-            val c = parent._children
+
+    def unlink = parent match {
+        case Some(n) => {
+            val c = n._children
             c.remove(c.indexOf(this))
+            _parent = None
         }
-        _parent = null
+        case None => ()
     }
     
     val _nr = if (useCounter) { Line.counter += 1; Line.counter } else 0
@@ -96,7 +102,7 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
     def nr = _nr
     
     override def toString = {
-        val pnr = if (parent != null) parent.nr else 0
+        val pnr = parent match { case Some(n) => n.nr; case None => 0 }
         "%06d <%06d> %s %s" format (nr, pnr, key, args)
     }
     

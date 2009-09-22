@@ -4,9 +4,19 @@ import java.io.{Writer, FileWriter}
 import scala.io.Source
 import scala.collection.mutable.Stack
 
+import Selection._
+
 object Document {
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
+    
+//    implicit def extract(nodes: Iterable[Line]) = {
+//        val result = new Document
+//        val anchor = result.root.select("Figure")(0)
+//        for (node <- root.cloneSelected(nodes).select("![{}]"))
+//             anchor.prependSibling(node.clone)
+//        result
+//    }
 }
 
 class Document(input: Source) {
@@ -25,14 +35,17 @@ class Document(input: Source) {
         }
     }
     
-    val _actorsByName = Map(root.select("actor|prop|controlProp")
-                                .filter(!_.select("name").isEmpty)
-                                .map(n => n.args -> new Actor(n)) :_*)
-    val _figureRoots = root.select("figure", "root")
-                           .map(_.args).map(_actorsByName)
-    for (child <- root.select("figure", "addChild"))
-        _actorsByName(child.nextSibling.text)
-            .appendChild(_actorsByName(child.args))
+    val _actorsByName = {
+        val pattern = "actor" | "prop" | "controlProp"
+        val nodes = (this \ pattern \ "name").flatMap(_.parent)
+        Map(nodes.toStream.map(n => n.args -> new Actor(n)) :_*)
+    }
+    for (c <- this \ "figure" \ "addChild") c.nextSibling match {
+        case Some(n) => _actorsByName(n.text).appendChild(_actorsByName(c.args))
+        case None => ()
+    }
+
+    val _figureRoots = (this \ "figure" \ "root").map(_.args).map(_actorsByName)
 
     //-- public interface starts here
     
@@ -75,16 +88,14 @@ class Document(input: Source) {
     
     def channelNames(types: String*) = {
         val pattern = types.mkString("|")
-        Set(root.select("actor", "channels", pattern).map(_.args) :_*)
+        Set((this \ "actor" \ "channels" \ pattern).toStream.map(_.args) :_*)
     }
     
     def extract(nodes: Iterable[Line]) = {
         val result = new Document
-        val anchor = result.root.select("Figure")(0)
+        val anchor = (result \ "Figure").elements.next
         for (node <- root.cloneSelected(nodes).select("![{}]"))
              anchor.prependSibling(node.clone)
         result
     }
-
-    def extract(pattern: String*): Document = extract(root.select(pattern :_*))
 }
