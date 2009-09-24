@@ -57,25 +57,4 @@ trait BasicNode {
     }
     
     def matches(pattern: String): Boolean
-      
-    def select(pattern: String*): Stream[T] = {
-        if (pattern.isEmpty) Stream(this.asInstanceOf[T])
-        else {
-          val candidates =
-              if (pattern(0) == "*")
-                  subtree
-              else if (pattern(0)(0) == '!')
-                  children.filter(!_.matches(pattern(0).drop(1)))
-              else
-                  children.filter(_.matches(pattern(0)))
-          for (cand <- candidates; node <- cand.select(pattern.drop(1) :_*))
-              yield node.asInstanceOf[T]
-        }
-    }
-    
-    def extract(pattern: String*) = cloneSelected(select(pattern :_*))
-    
-    def delete(pattern: String*) {
-        for (node <- select(pattern :_*).toList) node.unlink
-    }
 }

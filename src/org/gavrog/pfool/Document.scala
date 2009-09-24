@@ -4,12 +4,20 @@ import java.io.{Writer, FileWriter}
 import scala.io.Source
 import scala.collection.mutable.Stack
 
-import Selection._
+import Document._
 
 object Document {
+	import Selection._
+  
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
+    implicit def asSelection(node: Line)    = Selection(node)
+    implicit def asSelection(doc: Document) = Selection(doc.root)
+    
+    implicit def toMatcher(p: String)  = new Matcher[Line](_.matches(p))
+	implicit def toMatcher[T](u: Unit) = new Matcher[T](n => true)
+
 //    implicit def extract(nodes: Iterable[Line]) = {
 //        val result = new Document
 //        val anchor = result.root.select("Figure")(0)
@@ -38,7 +46,7 @@ class Document(input: Source) {
     val _actorsByName = {
         val pattern = "actor" | "prop" | "controlProp"
         val nodes = (this \ pattern \ "name").flatMap(_.parent)
-        Map(nodes.toStream.map(n => n.args -> new Actor(n)) :_*)
+        Map(nodes.map(n => n.args -> new Actor(n)) :_*)
     }
     for (c <- this \ "figure" \ "addChild") c.nextSibling match {
         case Some(n) => _actorsByName(n.text).appendChild(_actorsByName(c.args))
@@ -88,13 +96,13 @@ class Document(input: Source) {
     
     def channelNames(types: String*) = {
         val pattern = types.mkString("|")
-        Set((this \ "actor" \ "channels" \ pattern).toStream.map(_.args) :_*)
+        Set((this \ "actor" \ "channels" \ pattern).map(_.args) :_*)
     }
     
     def extract(nodes: Iterable[Line]) = {
         val result = new Document
-        val anchor = (result \ "Figure").elements.next
-        for (node <- root.cloneSelected(nodes).select("![{}]"))
+        val anchor = (result \ "Figure")(0)
+        for (node <- (root.cloneSelected(nodes) \ !"[{}]"))
              anchor.prependSibling(node.clone)
         result
     }
