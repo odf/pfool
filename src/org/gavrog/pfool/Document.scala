@@ -7,28 +7,32 @@ import scala.collection.mutable.Stack
 import Document._
 
 object Document {
-	import Selection._
-  
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
-    implicit def asSelection(node: Line)    = Selection(node)
-    implicit def asSelection(doc: Document) = Selection(doc.root)
+    implicit def asSelection(node: Line)    = new Selection(List(node))
+    implicit def asSelection(doc: Document) = new Selection(List(doc.root))
     
-    implicit def toMatcher(p: String)  = new Matcher[Line](_.matches(p))
-	implicit def toMatcher[T](u: Unit) = new Matcher[T](n => true)
+    implicit def asMatcher(p: String)  = new Matcher[Line](_.matches(p))
+	implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
 
-//    implicit def extract(nodes: Iterable[Line]) = {
-//        val result = new Document
-//        val anchor = result.root.select("Figure")(0)
-//        for (node <- root.cloneSelected(nodes).select("![{}]"))
-//             anchor.prependSibling(node.clone)
-//        result
-//    }
+    implicit def extract(nodes: Iterable[Line]) = {
+	    def root(node: Line): Line = node.parent match {
+	        case Some(p) => root(p)
+	        case None => node
+        }
+        val result = new Document
+        val anchor = (result \ "Figure")(0)
+        for (node <- root(nodes.elements.next).cloneSelected(nodes).children
+             if node.key != "{" && node.key != "}"
+        )
+             anchor.prependSibling(node.clone)
+        result
+    }
 }
 
 class Document(input: Source) {
-    val _root: Line = new Line("")
+    private val _root: Line = new Line("")
     
     {
         Line.resetCounter
@@ -43,9 +47,9 @@ class Document(input: Source) {
         }
     }
     
-    val _actorsByName = {
+    private val _actorsByName = {
         val pattern = "actor" | "prop" | "controlProp"
-        val nodes = (this \ pattern \ "name").flatMap(_.parent)
+        val nodes = (this \ pattern \ "name")(_.parent)
         Map(nodes.map(n => n.args -> new Actor(n)) :_*)
     }
     for (c <- this \ "figure" \ "addChild") c.nextSibling match {
@@ -53,7 +57,8 @@ class Document(input: Source) {
         case None => ()
     }
 
-    val _figureRoots = (this \ "figure" \ "root").map(_.args).map(_actorsByName)
+    private val _figureRoots =
+        (this \ "figure" \ "root").map(n => _actorsByName(n.args))
 
     //-- public interface starts here
     
@@ -85,25 +90,15 @@ class Document(input: Source) {
         target.flush()
     }
     
-    def writeTo(filename: String) {
-        val target = new FileWriter(filename)
-        writeTo(new FileWriter(filename))
-        target.flush
-        target.close
+    def writeTo(filename: String): Unit = new FileWriter(filename) {
+        Document.this.writeTo(this)
+        close
     }
 
+    def >>(filename: String) = writeTo(filename)
+    
     def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
-    def channelNames(types: String*) = {
-        val pattern = types.mkString("|")
-        Set((this \ "actor" \ "channels" \ pattern).map(_.args) :_*)
-    }
-    
-    def extract(nodes: Iterable[Line]) = {
-        val result = new Document
-        val anchor = (result \ "Figure")(0)
-        for (node <- (root.cloneSelected(nodes) \ !"[{}]"))
-             anchor.prependSibling(node.clone)
-        result
-    }
+    def channelNames(types: String*) =
+        Set((this \ "actor" \ "channels" \ types.mkString("|")).map(_.args) :_*)
 }
