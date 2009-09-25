@@ -13,8 +13,10 @@ object Document {
     implicit def asSelection(node: Line)    = new Selection(List(node))
     implicit def asSelection(doc: Document) = new Selection(List(doc.root))
     
-    implicit def asMatcher(p: String)  = new Matcher[Line](_.matches(p))
-	implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
+    implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
+    implicit def asMatcher(p: String) = new Matcher[Line](_.matches(p))
+    implicit def asMatcher(p: Iterable[String]) 
+        = new Matcher[Line](_.matches(p.mkString("(", ")|(", ")")))
 
     implicit def extract(nodes: Iterable[Line]) = {
 	    def root(node: Line): Line = node.parent match {
@@ -100,5 +102,5 @@ class Document(input: Source) {
     def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
     def channelNames(types: String*) =
-        Set((this \ "actor" \ "channels" \ types.mkString("|")).map(_.args) :_*)
+        Set((this \ "actor" \ "channels" \ types).map(_.args) :_*)
 }
