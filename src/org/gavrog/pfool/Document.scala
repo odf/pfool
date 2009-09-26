@@ -7,8 +7,6 @@ import scala.collection.mutable.{HashSet, Queue, Stack}
 import Document._
 
 object Document {
-    import Selector._
-  
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
@@ -17,9 +15,9 @@ object Document {
     implicit def asMatcher(p: Iterable[String]): Matcher[Line]
         = asMatcher(p.mkString("(", ")|(", ")"))
         
-    implicit def asSelector(u: Unit) = One[Line]
-    implicit def asSelector(p: String) = Filter[Line](One[Line], _.matches(p))
-    implicit def asSelector(m: Matcher[Line]) = Filter[Line](One[Line], m)
+    implicit def asSelector(u: Unit) = new Selector[Line]
+    implicit def asSelector(p: String) = new Selector[Line] & (_.matches(p))
+    implicit def asSelector(m: Matcher[Line]) = new Selector[Line] & m
     
     implicit def asSelectable(n: Line) = new Object {
         def apply(s: Selector[Line]) = s(n.children)

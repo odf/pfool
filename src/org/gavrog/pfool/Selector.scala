@@ -12,10 +12,15 @@ class Matcher[T](f: T => Boolean) extends (T => Boolean) {
 }
 
 
-trait Selector[T <: { def children: Iterable[T] }] {
-    def apply(roots: Iterable[T]): Seq[T]
+class Selector[T <: { def children: Iterable[T] }] {
+    def apply(roots: Iterable[T]) = roots.toSeq
     
-    def apply(f: T => Iterable[T]) = Selector.Mapper(this, f)
+    def apply(f: T => Iterable[T]): Selector[T] = {
+        val base = this
+        new Selector[T] {
+            override def apply(roots: Iterable[T]) = base(roots).flatMap(f)
+        }
+    }
     
     def children = this(_.children)
 
@@ -25,29 +30,14 @@ trait Selector[T <: { def children: Iterable[T] }] {
         this(desc(_))
     }
 
-    def &(m: T => Boolean) = Selector.Filter(this, m)
+    def &(m: T => Boolean) = {
+        val base = this
+        new Selector[T] {
+            override def apply(roots: Iterable[T]) = base(roots).filter(m)
+        }
+    }
     
     def \(m: T => Boolean) = children & m
     
     def \\(m: T => Boolean) = descendants & m
-}
-
-
-object Selector {
-    case class One[T <: { def children: Iterable[T] }]() extends Selector[T]
-    {
-        def apply(roots: Iterable[T]) = roots.toSeq
-    }
-    
-    case class Filter[T <: { def children: Iterable[T] }](
-                    base: Selector[T], test: T => Boolean) extends Selector[T]
-    {
-        def apply(roots: Iterable[T]) = base(roots).filter(test)
-    }
-    
-    case class Mapper[T <: { def children: Iterable[T] }](
-                    base: Selector[T], axis: T => Iterable[T]) extends Selector[T]
-    {
-        def apply(roots: Iterable[T]) = base(roots).flatMap(axis)
-    }
 }
