@@ -12,6 +12,11 @@ object Document {
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
+    implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
+    implicit def asMatcher(p: String) = new Matcher[Line](_.matches(p))
+    implicit def asMatcher(p: Iterable[String]): Matcher[Line]
+        = asMatcher(p.mkString("(", ")|(", ")"))
+        
     implicit def asSelector(u: Unit) = One[Line]
     implicit def asSelector(p: String) = Filter[Line](One[Line], _.matches(p))
     implicit def asSelector(m: Matcher[Line]) = Filter[Line](One[Line], m)
@@ -21,34 +26,6 @@ object Document {
     }
     implicit def asSelectable(n: Option[Line]) = new Object {
         def apply(s: Selector[Line]) = s(n.toSeq.flatMap(_.children))
-    }
-    
-    implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
-    implicit def asMatcher(p: String) = new Matcher[Line](_.matches(p))
-    implicit def asMatcher(p: Iterable[String]) 
-        = new Matcher[Line](_.matches(p.mkString("(", ")|(", ")")))
-        
-    implicit def extract(elements: Iterable[Line]) = new Document {
-        val marked = new HashSet[Line]
-        val queue = new Queue[Line]
-        val roots = new HashSet[Line]
-
-        queue ++= elements
-        while (!queue.isEmpty) {
-            val node = queue.dequeue
-            if (!marked(node)) {
-                marked += node
-                for (child <- node("[{}]")) marked += child
-                node.parent match {
-                    case Some(p) => queue += p
-                    case None => roots += node
-                }
-            }
-        }
-        
-        val anchor = this("Figure")(0)
-        for (r <- roots; node <- r.cloneIf(marked)(!"[{}]"))
-             anchor.prependSibling(node.clone)
     }
 }
 
@@ -90,6 +67,33 @@ class Document(input: Source) {
     
     def apply(s: Selector[Line]) = s(root.children)
     
+    def delete(s: Selector[Line]) = this(s).foreach(_.unlink)
+    
+    def extract(s: Selector[Line]) = {
+        val marked = new HashSet[Line]
+        val queue = new Queue[Line]
+        val roots = new HashSet[Line]
+
+        queue ++= this(s)
+        while (!queue.isEmpty) {
+            val node = queue.dequeue
+            if (!marked(node)) {
+                marked += node
+                for (child <- node("[{}]")) marked += child
+                node.parent match {
+                    case Some(p) => queue += p
+                    case None => roots += node
+                }
+            }
+        }
+        
+        val res = new Document
+        val anchor = res("Figure")(0)
+        for (r <- roots; node <- r.cloneIf(marked)(!"[{}]"))
+             anchor.prependSibling(node.clone)
+        res
+    }
+    
     def actor(name: String) = _actorsByName(name)
     
     def actors = _actorsByName.values
@@ -118,8 +122,6 @@ class Document(input: Source) {
         close
     }
 
-    def >>(filename: String) = writeTo(filename)
-    
     def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
     def channelNames(types: String*) =
