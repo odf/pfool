@@ -4,22 +4,30 @@ import java.io.{Writer, FileWriter}
 import scala.io.Source
 import scala.collection.mutable.{HashSet, Queue, Stack}
 
-
 import Document._
 
 object Document {
+    import Selector._
+  
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
-    implicit def asSelection(node: Line)    = new Selection(List(node))
-    implicit def asSelection(node: Option[Line]) = new Selection(node)
-    implicit def asSelection(doc: Document) = new Selection(List(doc.root))
+    implicit def asSelector(u: Unit) = One[Line]
+    implicit def asSelector(p: String) = Filter[Line](One[Line], _.matches(p))
+    implicit def asSelector(m: Matcher[Line]) = Filter[Line](One[Line], m)
+    
+    implicit def asSelectable(n: Line) = new Object {
+        def apply(s: Selector[Line]) = s(n.children)
+    }
+    implicit def asSelectable(n: Option[Line]) = new Object {
+        def apply(s: Selector[Line]) = s(n.toSeq.flatMap(_.children))
+    }
     
     implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
     implicit def asMatcher(p: String) = new Matcher[Line](_.matches(p))
     implicit def asMatcher(p: Iterable[String]) 
         = new Matcher[Line](_.matches(p.mkString("(", ")|(", ")")))
-
+        
     implicit def extract(elements: Iterable[Line]) = new Document {
         val marked = new HashSet[Line]
         val queue = new Queue[Line]
@@ -30,7 +38,7 @@ object Document {
             val node = queue.dequeue
             if (!marked(node)) {
                 marked += node
-                for (child <- node \ "[{}]") marked += child
+                for (child <- node("[{}]")) marked += child
                 node.parent match {
                     case Some(p) => queue += p
                     case None => roots += node
@@ -38,11 +46,12 @@ object Document {
             }
         }
         
-        val anchor = (this \ "Figure")(0)
-        for (r <- roots; node <- r.cloneIf(marked) \ !"[{}]")
+        val anchor = this("Figure")(0)
+        for (r <- roots; node <- r.cloneIf(marked)(!"[{}]"))
              anchor.prependSibling(node.clone)
     }
 }
+
 
 class Document(input: Source) {
     private val _root: Line = new Line("")
@@ -61,17 +70,16 @@ class Document(input: Source) {
     }
     
     private val _actorsByName = {
-        val pattern = "actor" | "prop" | "controlProp"
-        val nodes = (this \ pattern \ "name")(_.parent)
-        Map(nodes.map(n => n.args -> new Actor(n)) :_*)
+        val selector = (("actor" | "prop" | "controlProp") \ "name")(_.parent)
+        Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
     }
-    for (c <- this \ "figure" \ "addChild") c.nextSibling match {
+    for (c <- this("figure" \ "addChild")) c.nextSibling match {
         case Some(n) => _actorsByName(n.text).appendChild(_actorsByName(c.args))
         case None => ()
     }
 
     private val _figureRoots =
-        (this \ "figure" \ "root").map(n => _actorsByName(n.args))
+        this("figure" \ "root").map(n => _actorsByName(n.args))
 
     //-- public interface starts here
     
@@ -79,6 +87,8 @@ class Document(input: Source) {
                     split "_" mkString "\n"))
 
     def root = _root
+    
+    def apply(s: Selector[Line]) = s(root.children)
     
     def actor(name: String) = _actorsByName(name)
     
@@ -113,5 +123,5 @@ class Document(input: Source) {
     def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
     def channelNames(types: String*) =
-        Set((this \ "actor" \ "channels" \ types).map(_.args) :_*)
+        Set(this("actor" \ "channels" \ types).map(_.args) :_*)
 }
