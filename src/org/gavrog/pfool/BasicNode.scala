@@ -22,13 +22,16 @@ trait BasicNode {
 
     protected def inheritsMark = false
     
-    override def clone: T = {
-        val root = cloneSelf
-        for (node <- children) root.appendChild(node.clone.asInstanceOf[root.T])
-        root.asInstanceOf[T]
-    }
+    def cloneIf(f: BasicNode => Boolean): Option[T] = if (f(this)) {
+        val root: T = cloneSelf
+        for (node <- children; ch <- node.cloneIf(f))
+            root.appendChild(ch.asInstanceOf[root.T])
+        Some(root)
+    } else None
     
-    def cloneSelected(elements: Iterable[T]): T = {
+    override def clone = cloneIf(_ => true).get
+    
+    def cloneSelected(elements: Iterable[T]): Option[T] = {
         val marked = new HashSet[BasicNode]
         val queue = new Queue[BasicNode]
 
@@ -46,14 +49,7 @@ trait BasicNode {
             }
         }
         
-        def clone(node: BasicNode): BasicNode = {
-            val root = node.cloneSelf
-            for (child <- node.children if marked(child))
-                root.appendChild(clone(child).asInstanceOf[root.T])
-            root
-        }
-        
-        clone(this).asInstanceOf[T]
+        cloneIf(marked)
     }
     
     def matches(pattern: String): Boolean

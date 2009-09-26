@@ -11,6 +11,7 @@ object Document {
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
     implicit def asSelection(node: Line)    = new Selection(List(node))
+    implicit def asSelection(node: Option[Line]) = new Selection(node)
     implicit def asSelection(doc: Document) = new Selection(List(doc.root))
     
     implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
@@ -18,18 +19,15 @@ object Document {
     implicit def asMatcher(p: Iterable[String]) 
         = new Matcher[Line](_.matches(p.mkString("(", ")|(", ")")))
 
-    implicit def extract(nodes: Iterable[Line]) = {
+    implicit def extract(selected: Iterable[Line]) = new Document {
 	    def root(node: Line): Line = node.parent match {
 	        case Some(p) => root(p)
 	        case None => node
         }
-        val result = new Document
-        val anchor = (result \ "Figure")(0)
-        for (node <- root(nodes.elements.next).cloneSelected(nodes).children
-             if node.key != "{" && node.key != "}"
-        )
+        val anchor = (this \ "Figure")(0)
+        val r = root(selected.elements.next)
+        for (node <- r.cloneSelected(selected) \ !"[{}]")
              anchor.prependSibling(node.clone)
-        result
     }
 }
 
