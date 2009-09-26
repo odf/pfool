@@ -77,7 +77,7 @@ class Document(input: Source) {
             val node = queue.dequeue
             if (!marked(node)) {
                 marked += node
-                for (child <- node("[{}]")) marked += child
+                marked ++= node("[{}]")
                 node.parent match {
                     case Some(p) => queue += p
                     case None => roots += node

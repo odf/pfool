@@ -25,11 +25,10 @@ object Operations {
             }
         }
   
-        val pattern = types.mkString("|")
         def old2new(s: String) = if (mapping.isDefinedAt(s)) mapping(s) else s
       
         //-- change names in channel definitions
-        for (node <- doc("actor" \ "channels" \ pattern))
+        for (node <- doc("actor" \ "channels" \ types))
             node.args = old2new(node.args)
       
         //-- change names in dependent parameter (ERC) instructions
