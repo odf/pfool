@@ -68,8 +68,6 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
     
     protected def cloneSelf = new Line(text)
     
-    protected override def inheritsMark = List("{", "}").contains(key)
-    
     def text = (key :: _args.toList).mkString(" ")
     
     def text_=(s: String) {

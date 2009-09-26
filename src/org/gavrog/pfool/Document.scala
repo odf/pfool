@@ -2,7 +2,8 @@ package org.gavrog.pfool
 
 import java.io.{Writer, FileWriter}
 import scala.io.Source
-import scala.collection.mutable.Stack
+import scala.collection.mutable.{HashSet, Queue, Stack}
+
 
 import Document._
 
@@ -19,14 +20,26 @@ object Document {
     implicit def asMatcher(p: Iterable[String]) 
         = new Matcher[Line](_.matches(p.mkString("(", ")|(", ")")))
 
-    implicit def extract(selected: Iterable[Line]) = new Document {
-	    def root(node: Line): Line = node.parent match {
-	        case Some(p) => root(p)
-	        case None => node
+    implicit def extract(elements: Iterable[Line]) = new Document {
+        val marked = new HashSet[Line]
+        val queue = new Queue[Line]
+        val roots = new HashSet[Line]
+
+        queue ++= elements
+        while (!queue.isEmpty) {
+            val node = queue.dequeue
+            if (!marked(node)) {
+                marked += node
+                for (child <- node \ "[{}]") marked += child
+                node.parent match {
+                    case Some(p) => queue += p
+                    case None => roots += node
+                }
+            }
         }
+        
         val anchor = (this \ "Figure")(0)
-        val r = root(selected.elements.next)
-        for (node <- r.cloneSelected(selected) \ !"[{}]")
+        for (r <- roots; node <- r.cloneIf(marked) \ !"[{}]")
              anchor.prependSibling(node.clone)
     }
 }
