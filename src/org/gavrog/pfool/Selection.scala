@@ -1,10 +1,5 @@
 package org.gavrog.pfool
 
-object Selection {
-	def apply[T <: { def children: Iterable[T] }](nodes: T*) =
-	    new Selection(nodes)
-}
-
 class Matcher[T](f: T => Boolean) extends (T => Boolean) {
     def apply(arg: T) = f(arg)
     
@@ -37,9 +32,9 @@ class Selection[T <: { def children: Iterable[T] }](nodes: Iterable[T])
         this(desc(_))
     }
     
-    def &(m: Matcher[T]) = new Selection(contents.filter(m))
+    def &(m: T => Boolean) = new Selection(contents.filter(m))
     
-    def \(m: Matcher[T]) = children & m
+    def \(m: T => Boolean) = children & m
     
-    def \\(m: Matcher[T]) = descendants & m
+    def \\(m: T => Boolean) = descendants & m
 }
