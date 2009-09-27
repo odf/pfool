@@ -28,7 +28,24 @@ object Document {
 }
 
 
-class Document() {
+class Document(input: Source) {
+	val root = new Line("")
+
+	init
+  
+    protected def init = {
+        Line.resetCounter
+        var last = root
+        val stack = new Stack[Line]()
+        stack.push(last)
+        
+        for (node <- input.getLines.map(new Line(_, true))) {
+            if (node.key == "{") stack.push(last)
+            stack.top.appendChild(node)
+            last = if (node.key == "}") stack.pop else node
+        }
+    }
+    
     private def _actorsByName = {
         val selector = (("actor" | "prop" | "controlProp") \ "name")(_.parent)
         val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
@@ -43,27 +60,15 @@ class Document() {
     private def _figureRoots =
         this("figure" \ "root").map(_.args).map(_actorsByName)
 
+    private def this() = this(Source fromString "")
+    
     //-- public interface starts here
-    
-    val root = new Line("")
-    
-    def this(input: Source) = this() {
-        Line.resetCounter
-        var last = root
-        val stack = new Stack[Line]()
-        stack.push(last)
-        
-        for (node <- input.getLines.map(new Line(_, true))) {
-            if (node.key == "{") stack.push(last)
-            stack.top.appendChild(node)
-            last = if (node.key == "}") stack.pop else node
-        }
-    }
     
     override def clone = {
         val original = this
-        new Document {
+        new Document() {
             override val root = original.root.clone
+            override def init = {}
         }
     }
     
@@ -74,6 +79,7 @@ class Document() {
                 case Some(n) => n
                 case None => new Line("")
             }
+            override def init = {}
         }
     }
     
