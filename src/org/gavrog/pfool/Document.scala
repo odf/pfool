@@ -2,7 +2,6 @@ package org.gavrog.pfool
 
 import java.io.{Writer, FileWriter}
 import scala.io.Source
-import scala.collection.mutable.{HashSet, Queue, Stack}
 
 import Document._
 
@@ -32,19 +31,15 @@ class Document(input: Source) {
 	val root = new Line("")
 
 	init
-  
-    protected def init = {
-        Line.resetCounter
-        var last = root
-        val stack = new Stack[Line]()
-        stack.push(last)
-        
-        for (node <- input.getLines.map(new Line(_, true))) {
-            if (node.key == "{") stack.push(last)
-            stack.top.appendChild(node)
-            last = if (node.key == "}") stack.pop else node
-        }
-    }
+
+	protected def init {
+		(List(root) /: input.getLines)((os, line) => {
+		  	val node = new Line(line, true)
+		  	val ns = if (node.key == "{" || os.tail == Nil) os else os.tail
+		  	ns.head.appendChild(node)
+		  	if (node.key == "}") ns else node :: ns
+		})
+	}
     
     private def _actorsByName = {
         val selector = (("actor" | "prop" | "controlProp") \ "name")(_.parent)
@@ -68,7 +63,7 @@ class Document(input: Source) {
         val original = this
         new Document() {
             override val root = original.root.clone
-            override def init = {}
+            override def init {}
         }
     }
     
@@ -79,7 +74,7 @@ class Document(input: Source) {
                 case Some(n) => n
                 case None => new Line("")
             }
-            override def init = {}
+            override def init {}
         }
     }
     
