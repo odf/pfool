@@ -88,24 +88,14 @@ class Document(input: Source) {
     def delete(s: Selector[Line]) = this(s).foreach(_.unlink)
     
     def extract(s: Selector[Line]) = {
-        val marked = new HashSet[Line]
-        val queue = new Queue[Line]
-
-        queue ++= this(s)
-        queue ++= this("version|figure")
-        while (!queue.isEmpty) {
-            val node = queue.dequeue
-            if (!marked(node)) {
-                marked += node
-                marked ++= node("[{}]")
-                node.parent match {
-                    case Some(p) => queue += p
-                    case None => ()
-                }
-            }
-        }
-        
-        cloneIf(marked)
+		def closure(marked: Set[Line], queue: Seq[Line]): Set[Line] =
+			if (queue.isEmpty) marked else {
+				val n = queue(0)
+				val q = queue.drop(1) ++ (if (marked(n)) Nil else n.parent)
+				closure(marked + n ++ n("[{}]"), q)
+			}
+      
+		cloneIf(closure(Set(), this(s) ++ this("version|figure")))
     }
     
     def actor(name: String) = _actorsByName(name)
