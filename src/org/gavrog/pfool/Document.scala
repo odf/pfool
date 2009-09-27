@@ -28,12 +28,28 @@ object Document {
 }
 
 
-class Document(input: Source) {
-    private val _root: Line = new Line("")
+class Document() {
+    private def _actorsByName = {
+        val selector = (("actor" | "prop" | "controlProp") \ "name")(_.parent)
+        val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
+        
+        for (c <- this("figure" \ "addChild")) c.nextSibling match {
+            case Some(n) => actors(n.text).appendChild(actors(c.args))
+            case None => ()
+        }
+        actors
+    }
+
+    private def _figureRoots =
+        this("figure" \ "root").map(_.args).map(_actorsByName)
+
+    //-- public interface starts here
     
-    {
+    val root = new Line("")
+    
+    def this(input: Source) = this() {
         Line.resetCounter
-        var last = _root
+        var last = root
         val stack = new Stack[Line]()
         stack.push(last)
         
@@ -44,24 +60,22 @@ class Document(input: Source) {
         }
     }
     
-    private val _actorsByName = {
-        val selector = (("actor" | "prop" | "controlProp") \ "name")(_.parent)
-        Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
+    override def clone = {
+        val original = this
+        new Document {
+            override val root = original.root.clone
+        }
     }
-    for (c <- this("figure" \ "addChild")) c.nextSibling match {
-        case Some(n) => _actorsByName(n.text).appendChild(_actorsByName(c.args))
-        case None => ()
-    }
-
-    private val _figureRoots =
-        this("figure" \ "root").map(n => _actorsByName(n.args))
-
-    //-- public interface starts here
     
-    def this() = this(Source.fromString("{_version_{_number 4.1_}_Figure_{_}_}"
-                    split "_" mkString "\n"))
-
-    def root = _root
+    def cloneIf(f: Line => Boolean) = {
+        val original = this
+        new Document {
+            override val root = original.root.cloneIf(f) match {
+                case Some(n) => n
+                case None => new Line("")
+            }
+        }
+    }
     
     def apply(s: Selector[Line]) = s(root.children)
     
@@ -70,9 +84,9 @@ class Document(input: Source) {
     def extract(s: Selector[Line]) = {
         val marked = new HashSet[Line]
         val queue = new Queue[Line]
-        val roots = new HashSet[Line]
 
         queue ++= this(s)
+        queue ++= this("version|figure")
         while (!queue.isEmpty) {
             val node = queue.dequeue
             if (!marked(node)) {
@@ -80,16 +94,12 @@ class Document(input: Source) {
                 marked ++= node("[{}]")
                 node.parent match {
                     case Some(p) => queue += p
-                    case None => roots += node
+                    case None => ()
                 }
             }
         }
         
-        val res = new Document
-        val anchor = res("Figure")(0)
-        for (r <- roots; node <- r.cloneIf(marked)(!"[{}]"))
-             anchor.prependSibling(node.clone)
-        res
+        cloneIf(marked)
     }
     
     def actor(name: String) = _actorsByName(name)
