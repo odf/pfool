@@ -51,7 +51,7 @@ object Operations {
     }
 
     def addChannels(actorNode: Line, names: Iterable[String], template: Line) {
-        val anchor = actorNode("channels" \ !("[{]" | "groups"))(0)
+        val anchor = actorNode("channels" \! "[{]" | "groups")(0)
         for (name <- names) {
             val node = template.clone
             node.args = name

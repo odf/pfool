@@ -9,14 +9,10 @@ object Document {
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
-    implicit def asMatcher[T](u: Unit) = new Matcher[T](n => true)
-    implicit def asMatcher(p: String) = new Matcher[Line](_.matches(p))
-    implicit def asMatcher(p: Iterable[String]): Matcher[Line]
-        = asMatcher(p.mkString("(", ")|(", ")"))
-        
     implicit def asSelector(u: Unit) = new Selector[Line]
     implicit def asSelector(p: String) = new Selector[Line] & (_.matches(p))
-    implicit def asSelector(m: Matcher[Line]) = new Selector[Line] & m
+    implicit def asSelector(p: Iterable[String]): Selector[Line]
+        = asSelector(p.mkString("(", ")|(", ")"))
     
     implicit def asSelectable(n: Line) = new Object {
         def apply(s: Selector[Line]) = s(n.children)
@@ -42,7 +38,7 @@ class Document(input: Source) {
 	}
     
     private def _actorsByName = {
-        val selector = (("actor" | "prop" | "controlProp") \ "name")(_.parent)
+        val selector = ("actor" | "prop" | "controlProp" \ "name")(_.parent)
         val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
         
         for (c <- this("figure" \ "addChild")) c.nextSibling match {

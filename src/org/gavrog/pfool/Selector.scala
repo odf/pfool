@@ -1,14 +1,11 @@
 package org.gavrog.pfool
 
 
-class Matcher[T](f: T => Boolean) extends (T => Boolean) {
-    def apply(arg: T) = f(arg)
-    
-    def unary_! = new Matcher[T](!this(_))
-    
-    def & (that: T => Boolean) = new Matcher[T](n => this(n) && that(n))
-    def | (that: T => Boolean) = new Matcher[T](n => this(n) || that(n))
-    def ^ (that: T => Boolean) = new Matcher[T](n => this(n) ^ that(n))
+object Selector {
+	def filter[T <: { def children: Iterable[T] }](f: T => Boolean) =
+		new Selector[T] {
+		  	override def apply(roots: Iterable[T]) = roots.toSeq.filter(f)
+		}
 }
 
 
@@ -30,14 +27,42 @@ class Selector[T <: { def children: Iterable[T] }] {
         this(desc(_))
     }
 
-    def &(m: T => Boolean) = {
-        val base = this
-        new Selector[T] {
-            override def apply(roots: Iterable[T]) = base(roots).filter(m)
-        }
+    def &(s: Selector[T]) = {
+    	val base = this
+    	new Selector[T] {
+    		override def apply(roots: Iterable[T]) = s(base(roots))
+    	}
     }
     
+    def |(s: Selector[T]) = {
+    	val base = this
+    	new Selector[T] {
+    		override def apply(roots: Iterable[T]) =
+    			(Set() ++ base(roots) ++ s(roots)).toSeq
+    	}
+    }
+    
+    def -(s: Selector[T]) = {
+    	val base = this
+    	new Selector[T] {
+    		override def apply(roots: Iterable[T]) =
+    			(Set() ++ base(roots) -- s(roots)).toSeq
+    	}
+    }
+    
+    def &(m: T => Boolean): Selector[T] = this & Selector.filter(m)
+    def |(m: T => Boolean): Selector[T] = this | Selector.filter(m)
+    def -(m: T => Boolean): Selector[T] = this | Selector.filter(m)
+    
     def \(m: T => Boolean) = children & m
+    def \(s: Selector[T]) = children & s
     
     def \\(m: T => Boolean) = descendants & m
+    def \\(s: Selector[T]) = descendants & s
+    
+    def \!(m: T => Boolean) = children - m
+    def \!(s: Selector[T]) = children - s
+    
+    def \\!(m: T => Boolean) = descendants - m
+    def \\!(s: Selector[T]) = descendants - s
 }
