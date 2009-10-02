@@ -61,10 +61,10 @@ object Operations {
     }
     
     def addChannels(doc: Document,
-                    names: Iterable[String], template: Line): Unit = {
-        for (a <- doc.actors if !a.name.startsWith("BODY:"))
-            addChannels(a.content, names, template)
-    }
+                    names: Iterable[String], template: Line): Unit =
+        for (node <- doc(("actor" | "prop" | "controlProp")
+                         & !".* BODY(:\\d*)?" \@ "name"))
+            addChannels(node, names, template)
     
     private def format(x: Double) = "%.6f" format x
     

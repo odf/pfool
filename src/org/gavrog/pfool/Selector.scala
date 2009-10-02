@@ -13,11 +13,10 @@ class Selector[T <: { def children: Iterable[T] }] {
     
     def children = this(_.children)
 
-    def descendants = {
-        def desc(n: T): Stream[T] =
-            Stream.concat(n.children.map(c => Stream.cons(c, desc(c))))
-        this(desc(_))
-    }
+    private def desc(n: T): Stream[T] =
+        Stream.concat(n.children.map(c => Stream.cons(c, desc(c))))
+    
+    def descendants = this(desc(_))
 
     def &(s: Selector[T]) = {
     	val base = this
@@ -26,13 +25,11 @@ class Selector[T <: { def children: Iterable[T] }] {
     	}
     }
     
-    def &(m: T => Boolean): Selector[T] = this & Filter(m)
-    
-    def \(m: T => Boolean) = children & m
     def \(s: Selector[T]) = children & s
-    
-    def \\(m: T => Boolean) = descendants & m
     def \\(s: Selector[T]) = descendants & s
+    
+    def \@(s: Selector[T]) = this & Filter(n => !s(n.children).isEmpty)
+    def \\@(s: Selector[T]) = this & Filter(n => !s(desc(n)).isEmpty)
 }
 
 case class Filter[T <: { def children: Iterable[T] }](f: T => Boolean)
