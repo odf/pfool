@@ -1,5 +1,7 @@
 package org.gavrog.pfool
 
+import scala.util.Sorting._
+
 import Document._
 
 object Operations {
@@ -62,9 +64,21 @@ object Operations {
     
     def addChannels(doc: Document,
                     names: Iterable[String], template: Line): Unit =
-        for (node <- doc(("actor" | "prop" | "controlProp")
-                         & !".* BODY(:\\d*)?" \@ "name"))
+        for (node <- doc("actor" & !".* BODY(:\\d*)?" \@ "channels"))
             addChannels(node, names, template)
+    
+    def sortChannels(actorNode: Line) {
+        for (base <- actorNode("channels")) {
+            val nodes = base("targetGeom" | "valueParm")
+            nodes.foreach(_.unlink)
+            val anchor = base(!("[{]" | "groups"))(0)
+            for (n <- stableSort(nodes, (a: Line, b: Line) => a.args < b.args))
+            	anchor.prependSibling(n)
+        }
+    }
+    
+    def sortChannels(doc: Document): Unit =
+        doc("actor" \@ "channels").foreach(sortChannels)
     
     private def format(x: Double) = "%.6f" format x
     
