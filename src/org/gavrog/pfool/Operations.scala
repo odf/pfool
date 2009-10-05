@@ -64,7 +64,7 @@ object Operations {
     
     def addChannels(doc: Document,
                     names: Iterable[String], template: Line): Unit =
-        for (node <- doc("actor" & !".* BODY(:\\d*)?" \@ "channels"))
+        for (node <- doc("actor" & !"BODY(:\\d*)?".matchesArgs \@ "channels"))
             addChannels(node, names, template)
     
     def sortChannels(actorNode: Line) {
@@ -72,6 +72,13 @@ object Operations {
             val nodes = base("targetGeom" | "valueParm")
             nodes.foreach(_.unlink)
             val anchor = base(!("[{]" | "groups"))(0)
+            for (n <- stableSort(nodes, (a: Line, b: Line) => a.args < b.args))
+            	anchor.prependSibling(n)
+        }
+        for (base <- actorNode("channels" \\ "groupNode")) {
+            val nodes = base("parmNode")
+            nodes.foreach(_.unlink)
+            val anchor = base(!("[{]" | "collapsed"))(0)
             for (n <- stableSort(nodes, (a: Line, b: Line) => a.args < b.args))
             	anchor.prependSibling(n)
         }

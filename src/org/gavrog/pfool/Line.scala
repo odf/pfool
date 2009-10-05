@@ -103,9 +103,4 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
         val pnr = parent match { case Some(n) => n.nr; case None => 0 }
         "%06d <%06d> %s %s" format (nr, pnr, key, args)
     }
-    
-    def matches(pattern: String) = {
-        val test = if (pattern contains " ") text else key
-        "(%s)$".format(pattern).r.findPrefixOf(test) != None
-    }
 }

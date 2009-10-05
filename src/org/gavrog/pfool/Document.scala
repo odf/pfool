@@ -2,6 +2,7 @@ package org.gavrog.pfool
 
 import java.io.{Writer, FileWriter}
 import scala.io.Source
+import scala.util.matching.Regex
 
 import Document._
 
@@ -9,10 +10,20 @@ object Document {
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
-    implicit def asFilter(u: Unit) = Filter[Line](n => true)
-    implicit def asFilter(p: String) = Filter[Line](_.matches(p))
-    implicit def asFilter(p: Iterable[String]): Filter[Line]
-        = asFilter(p.mkString("(", ")|(", ")"))
+    implicit def filterFromUnit(u: Unit) = Filter[Line](n => true)
+    implicit def filterFromString(p: String) =
+    	new Filter[Line](n => "(%s)$".format(p).r
+    			.findPrefixOf(if (p.contains(" ")) n.text else n.key) != None)
+    implicit def filtersFromString(p: String) = new Object {
+		private val regex = "(%s)$".format(p).r
+    	def matchesKey  = Filter[Line](n => regex.findPrefixOf(n.key)  != None)
+    	def matchesArgs = Filter[Line](n => regex.findPrefixOf(n.args) != None)
+    	def matchesText = Filter[Line](n => regex.findPrefixOf(n.text) != None)
+    }
+    implicit def filterFromStrings(p: Iterable[String])
+        = filterFromString(p.mkString("(", ")|(", ")"))
+    implicit def filtersFromStrings(p: Iterable[String])
+        = filtersFromString(p.mkString("(", ")|(", ")"))
     
     implicit def asSelectable(n: Line) = new Object {
         def apply(s: Selector[Line]) = s(n.children)
