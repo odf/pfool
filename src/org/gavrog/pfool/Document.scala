@@ -1,6 +1,7 @@
 package org.gavrog.pfool
 
-import java.io.{Writer, FileWriter}
+import java.io.{PrintStream, Writer, FileWriter, OutputStreamWriter}
+
 import scala.io.Source
 import scala.util.matching.Regex
 
@@ -87,7 +88,10 @@ class Document(input: Source) {
     
     def apply(s: Selector[Line]) = s(root.children)
     
-    def delete(s: Selector[Line]) = this(s).foreach(_.unlink)
+    def delete(s: Selector[Line]) {
+    	val nodes = this(s).toList
+    	nodes.foreach(_.unlink)
+    }
     
     def extract(s: Selector[Line]) = {
 		def closure(marked: Set[Line], queue: Seq[Line]): Set[Line] =
@@ -128,6 +132,9 @@ class Document(input: Source) {
         close
     }
 
+    def writeTo(target: PrintStream): Unit =
+    	writeTo(new OutputStreamWriter(target))
+    
     def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
     def channelNames(types: String*) =
