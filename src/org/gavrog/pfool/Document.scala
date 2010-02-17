@@ -104,7 +104,7 @@ class Document(input: Source) {
 		cloneIf(closure(Set(), this(s) ++ this("version|figure")))
     }
     
-    def actor(name: String) = _actorsByName(name)
+    def actor(name: String) = _actorsByName.get(name)
     
     def actors = _actorsByName.values
     

@@ -121,4 +121,19 @@ object Operations {
     
     def shiftActorAndDescendants(actor: Actor, s: Double*) =
         for (bone <- actor.subtree) shiftActor(bone, s :_*)
+    
+    def stripActor(doc: Document, actor: Actor) {
+        val names = actor.subtree.map(_.name)
+        for (name <- names) {
+            doc.delete("actor " + name)
+            doc.delete("actor" \ "channels" \ () \@ ("otherActor " + name))
+            for (node <- doc("figure" \ ("(addChild|weld) " + name))) {
+                node.nextSibling.foreach(_.unlink)
+                node.unlink
+            }
+        }
+    }
+    
+    def stripChildren(doc: Document, actor: Actor) =
+        actor.children.foreach(stripActor(doc, _))
 }
