@@ -35,20 +35,21 @@ object Document {
 }
 
 
-class Document(input: Source) {
-	val root = new Line("")
+class Document(theRoot: Line, init: Document => Unit) {
+	val root = theRoot
+	init(this)
 
-	init
-
-	protected def init {
-		(List(root) /: input.getLines)((os, line) => {
-		  	val node = new Line(line, true)
-		  	val ns = if (node.key == "{" || os.tail == Nil) os else os.tail
-		  	ns.head.appendChild(node)
-		  	if (node.key == "}") ns else node :: ns
-		})
-	}
+	def this(root: Line) = this(root, doc => {})
+ 
+	def this(input: Source) = this(new Line(""), doc => {
+		Line.resetCounter
+		for (v <- Line.read(input, true)) doc.root.appendChild(v)
+	})
     
+	def this(text: String) = this(Source fromString text)
+
+	def this() = this("")
+ 
     private def _actorsByName = {
         val selector = ("actor" | "prop" | "controlProp") \@ "name"
         val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
@@ -63,28 +64,14 @@ class Document(input: Source) {
     private def _figureRoots =
         this("figure" \ "root").map(_.args).map(_actorsByName)
 
-    private def this() = this(Source fromString "")
-    
     //-- public interface starts here
     
-    override def clone = {
-        val original = this
-        new Document() {
-            override val root = original.root.clone
-            override def init {}
-        }
-    }
+    override def clone = new Document(root.clone)
     
-    def cloneIf(f: Line => Boolean) = {
-        val original = this
-        new Document {
-            override val root = original.root.cloneIf(f) match {
-                case Some(n) => n
-                case None => new Line("")
-            }
-            override def init {}
-        }
-    }
+    def cloneIf(f: Line => Boolean) = root.cloneIf(f) match {
+    	case Some(n) => new Document(n)
+    	case None    => new Document()
+	}
     
     def apply(s: Selector[Line]) = s(root.children)
     
