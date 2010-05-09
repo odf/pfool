@@ -1,8 +1,8 @@
+package org.gavrog.pfool
+
 import org.gavrog.joss.meshes._
 import Vectors._
-import Sums._
 
-import org.gavrog.pfool._
 import Document._
 
 import scala.io.Source
@@ -188,7 +188,7 @@ object ObjToMorph {
 		      val current = weights(actorName)
 		      (for (i <- 0 to current.lastKey if current.contains(i))
 		         yield Delta(i, current(i).items
-				        .map(e => deltas.vertex(e._1 + 1).pos * e._2).sum)
+				        .map(e => deltas.vertex(e._1 + 1).pos * e._2).reduceLeft(_+_))
 		      ).toList
 		    }
 		    writeDeltas(doc, actorName, channelName, morphName, data, isPBM)
