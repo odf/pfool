@@ -49,7 +49,7 @@ object ObjToMorph {
 	case class Delta(nr: Int, pos: Vec3) {
 	  override def toString =
 		  "d %d %.8f %.8f %.8f".format(nr, pos.x, pos.y, pos.z)
-	  def largeEnough = pos.exists(x => x.abs > 1e-6)
+	  def largeEnough = pos.exists(x => x.abs > 1e-4)
 	}
 
 	def delta(v: Mesh.Vertex) = Delta(v.nr-1, v.pos)
