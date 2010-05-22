@@ -49,7 +49,7 @@ object ObjToMorph {
 	case class Delta(nr: Int, pos: Vec3) {
 	  override def toString =
 		  "d %d %.8f %.8f %.8f".format(nr, pos.x, pos.y, pos.z)
-	  def largeEnough = pos.exists(x => x.abs > 1e-4)
+	  def largeEnough = pos.exists(x => x.abs > 1e-5)
 	}
 
 	def delta(v: Mesh.Vertex) = Delta(v.nr-1, v.pos)
@@ -129,7 +129,7 @@ object ObjToMorph {
 					%s
 					deltaAddDelta 1
 				"""
-	      .trim.format(channelName)
+	      .trim.format(morphName)
 	    )
 	    ch("name").first.args = "PBM-" + morphName
 	    ch("hidden").first.args = "1"
@@ -160,7 +160,7 @@ object ObjToMorph {
 		  val actors = deltas.splitByGroup.filter(hasDeltas).toList
 		  val isPBM  = actors.length > 1
 		
-		  if (isPBM)
+		  if (isPBM) {
 		    findOrCreateActor(doc, "BODY")("channels" \ "}").first insertBefore
 		    """
 			    valueParm %s
@@ -180,7 +180,9 @@ object ObjToMorph {
 			      interpStyleLocked 0
 			      blendType 0
 			      }
-		    """.trim.format(channelName, morphName)
+		    """.trim.format(morphName, morphName)
+		    doc("version").first.insertAfter("createFullBodyMorph " + morphName)
+      }
 		
 		  for (m <- actors) {
 		    val actorName = m.groups.next.name
