@@ -26,7 +26,7 @@ object MorphToObj {
 		
 		val names = doc("actor" \\ ("targetGeom "+ pattern) \@ "deltas").map(_.args)
   
-		for (name <- names) {
+		for (name <- Set() ++ names) {
 			val byGroup =
 			  for { actor  <- doc("actor")
 			       channel <- actor(() \\ ("targetGeom " + name) \@ "deltas")
