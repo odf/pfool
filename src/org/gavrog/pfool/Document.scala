@@ -50,37 +50,37 @@ class Document(theRoot: Line, init: Document => Unit) {
 
 	def this() = this("")
  
-    private def _actorsByName = {
-        val selector = ("actor" | "prop" | "controlProp") \@ "name"
-        val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
+	private def _actorsByName = {
+		val selector = ("actor" | "prop" | "controlProp") \@ "name"
+		val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
         
-        for (c <- this("figure" \ "addChild")) c.nextSibling match {
-            case Some(n) => actors(n.text).appendChild(actors(c.args))
-            case None => ()
-        }
-        actors
-    }
+		for (c <- this("figure" \ "addChild")) c.nextSibling match {
+			case Some(n) => actors(n.text).appendChild(actors(c.args))
+			case None => ()
+		}
+		actors
+	}
 
-    private def _figureRoots =
-        this("figure" \ "root").map(_.args).map(_actorsByName)
+	private def _figureRoots =
+		this("figure" \ "root").map(_.args).map(_actorsByName)
 
-    //-- public interface starts here
+	// -- public interface starts here
     
-    override def clone = new Document(root.clone)
+	override def clone = new Document(root.clone)
     
-    def cloneIf(f: Line => Boolean) = root.cloneIf(f) match {
-    	case Some(n) => new Document(n)
-    	case None    => new Document()
+	def cloneIf(f: Line => Boolean) = root.cloneIf(f) match {
+	  case Some(n) => new Document(n)
+	  case None    => new Document()
 	}
     
-    def apply(s: Selector[Line]) = s(root.children)
+	def apply(s: Selector[Line]) = s(root.children)
     
-    def delete(s: Selector[Line]) {
-    	val nodes = this(s).toList
-    	nodes.foreach(_.unlink)
-    }
+	def delete(s: Selector[Line]) {
+		val nodes = this(s).toList
+		nodes.foreach(_.unlink)
+	}
     
-    def extract(s: Selector[Line]) = {
+	def extract(s: Selector[Line]) = {
 		def closure(marked: Set[Line], queue: Seq[Line]): Set[Line] =
 			if (queue.isEmpty) marked else {
 				val n = queue(0)
@@ -89,41 +89,62 @@ class Document(theRoot: Line, init: Document => Unit) {
 			}
       
 		cloneIf(closure(Set(), this(s) ++ this("version|figure")))
-    }
+	}
+	
+	private def adopt(node: Line, n: Int) {
+		if (node.children.isEmpty)
+			for (i <- 1 to n) {
+				val v = node.nextSibling.get
+				v.unlink
+				node.appendChild(v)
+			}
+  }
+ 
+	def fixCommands {
+		this("actor" \ "channels" \\ "valueOpDeltaAdd" ).foreach(adopt(_, 4))
+    this("actor" \ "channels" \\ "valueOpPlus" ).foreach(adopt(_, 3))
+    this("actor" \ "channels" \\ "valueOpMinus" ).foreach(adopt(_, 3))
+    this("actor" \ "channels" \\ "valueOpTimes" ).foreach(adopt(_, 3))
+    this("actor" \ "channels" \\ "valueOpDivideBy" ).foreach(adopt(_, 3))
+    this("actor" \ "channels" \\ "valueOpDivideInto" ).foreach(adopt(_, 3))
+		this("figure" \ "addChild").foreach(adopt(_, 1))
+    this("figure" \ "weld").foreach(adopt(_, 1))
+  }
+	
+	def actor(name: String) = _actorsByName.get(name)
     
-    def actor(name: String) = _actorsByName.get(name)
+	def actors = _actorsByName.values
     
-    def actors = _actorsByName.values
+	def nodes = root.descendants
     
-    def nodes = root.descendants
+	def dumpHierarchy {
+		def write(actor: Actor, level: Int) {
+			println("  " * level + actor.name)
+			for (child <- actor.children) write(child, level + 1)
+		}
+		for (root <- _figureRoots) write(root, 0)
+	}
     
-    def dumpHierarchy {
-        def write(actor: Actor, level: Int) {
-            println("  " * level + actor.name)
-            for (child <- actor.children) write(child, level + 1)
-        }
-        for (root <- _figureRoots) write(root, 0)
-    }
+	def writeTo(target: Writer) {
+		def write(node: Line, level: Int) {
+			target.write("\t" * level + node.text + "\n")
+			for (child <- node.children) write(child, level + 1)
+		}
+		fixCommands
+		for (node <- root.children) write(node, 0)
+		target.flush()
+	}
     
-    def writeTo(target: Writer) {
-        def write(node: Line, level: Int) {
-            target.write("\t" * level + node.text + "\n")
-            for (child <- node.children) write(child, level + 1)
-        }
-        for (node <- root.children) write(node, 0)
-        target.flush()
-    }
-    
-    def writeTo(filename: String): Unit = new FileWriter(filename) {
-        Document.this.writeTo(this)
-        close
-    }
+	def writeTo(filename: String): Unit = new FileWriter(filename) {
+		Document.this.writeTo(this)
+		close
+	}
 
-    def writeTo(target: PrintStream): Unit =
-    	writeTo(new OutputStreamWriter(target))
+	def writeTo(target: PrintStream): Unit =
+		writeTo(new OutputStreamWriter(target))
     
-    def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
+	def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
-    def channelNames(types: String*) =
-        Set(this("actor" \ "channels" \ types).map(_.args) :_*)
+	def channelNames(types: String*) =
+		Set(this("actor" \ "channels" \ types).map(_.args) :_*)
 }
