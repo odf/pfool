@@ -25,12 +25,8 @@ object Document {
         = filterFromString(p.mkString("(", ")|(", ")"))
     implicit def filtersFromStrings(p: Iterable[String])
         = filtersFromString(p.mkString("(", ")|(", ")"))
-    
-    implicit def asSelectable(n: Line) = new Object {
-        def apply(s: Selector[Line]) = s(n.children)
-    }
-    implicit def asSelectable(n: Option[Line]) = new Object {
-        def apply(s: Selector[Line]) = s(n.toSeq.flatMap(_.children))
+    implicit def asSelectable(n: Iterable[Line]) = new Object {
+        def apply(s: Selector[Line]) = s(n.flatMap(_.children))
     }
 }
 
@@ -52,7 +48,7 @@ class Document(theRoot: Line, init: Document => Unit) {
  
 	private def _actorsByName = {
 		val selector = ("actor" | "prop" | "controlProp") \@ "name"
-		val actors = Map(this(selector).map(n => n.args -> new Actor(n)) :_*)
+		val actors = Map(this(selector).map(n => n.args -> new Actor(n)).toSeq :_*)
         
 		for (c <- this("figure" \ "addChild")) c.nextSibling match {
 			case Some(n) => actors(n.text).appendChild(actors(c.args))
@@ -81,16 +77,15 @@ class Document(theRoot: Line, init: Document => Unit) {
 	}
     
 	def extract(s: Selector[Line]) = {
-		def closure(marked: Set[Line], queue: Stream[Line]): Set[Line] =
+		def closure(marked: Set[Line], queue: Iterable[Line]): Set[Line] =
 			if (queue.isEmpty) marked
 			else {
 				val n = queue.head
-				val q = if (marked(n) || n.parent == None) queue.tail
-				        else Stream.cons(n.parent.get, queue.tail)
-				closure(marked ++ n("[{}]") + n, q)
+				val q = (if (marked(n)) Stream() else n.parent.toStream) ++ queue.tail
+				closure(marked ++ Set(n) ++ n("[{}]"), q)
 			}
       
-		cloneIf(closure(Set(), Stream(this(s), this("version|figure")).flatten))
+		cloneIf(closure(Set(), this(s | "version|figure")))
 	}
 	
 	private def adopt(node: Line, n: Int) {
@@ -148,5 +143,5 @@ class Document(theRoot: Line, init: Document => Unit) {
 	def channelNames: Set[String] = channelNames("targetGeom", "valueParm")
     
 	def channelNames(types: String*) =
-		Set(this("actor" \ "channels" \ types).map(_.args) :_*)
+		Set(this("actor" \ "channels" \ types).map(_.args).toSeq :_*)
 }

@@ -53,7 +53,7 @@ object Operations {
     }
 
     def addChannels(actorNode: Line, names: Iterable[String], template: Line) {
-        val anchor = actorNode("channels" \ !("[{]" | "groups"))(0)
+        val anchor = actorNode("channels" \ !("[{]" | "groups")).head
         for (name <- names) {
             val node = template.clone
             node.args = name
@@ -71,15 +71,15 @@ object Operations {
         for (base <- actorNode("channels")) {
             val nodes = base("targetGeom" | "valueParm")
             nodes.foreach(_.unlink)
-            val anchor = base(!("[{]" | "groups"))(0)
-            for (n <- stableSort(nodes, (a: Line, b: Line) => a.args < b.args))
+            val anchor = base(!("[{]" | "groups")).head
+            for (n <- stableSort(nodes.toSeq, (a: Line, b: Line) => a.args < b.args))
             	anchor.prependSibling(n)
         }
         for (base <- actorNode("channels" \\ "groupNode")) {
             val nodes = base("parmNode")
             nodes.foreach(_.unlink)
-            val anchor = base(!("[{]" | "collapsed"))(0)
-            for (n <- stableSort(nodes, (a: Line, b: Line) => a.args < b.args))
+            val anchor = base(!("[{]" | "collapsed")).head
+            for (n <- stableSort(nodes.toSeq, (a: Line, b: Line) => a.args < b.args))
             	anchor.prependSibling(n)
         }
     }
@@ -107,11 +107,11 @@ object Operations {
     def shiftActor(actor: Actor, s: Double*) = actor.parent match {
         case Some(parent) => {
             for (node <- actor.content("channels" \ ())) {
-                if (node("otherActor " + parent.name) isDefinedAt 0)
+                if (!node("otherActor " + parent.name).isEmpty)
                     shiftChannel(node, s :_*)
             }
             for (node <- parent.content("channels" \ ()))
-                if (node("otherActor " + actor.name) isDefinedAt 0)
+                if (!node("otherActor " + actor.name).isEmpty)
                     shiftChannel(node, s :_*)
             for (node <- actor.content("origin" | "endPoint"))
                 shiftPoint(node, s :_*)

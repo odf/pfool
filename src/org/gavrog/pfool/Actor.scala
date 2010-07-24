@@ -16,7 +16,7 @@ class Actor(line: Line) extends BasicNode {
     
     def parent = _parent
     
-    def children = _children.toStream
+    def children = Stream() ++ _children
     
     def appendChild(child: T) {
         _children.append(child)

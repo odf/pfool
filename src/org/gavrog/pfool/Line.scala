@@ -33,7 +33,7 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
     
     def parent: Option[T] = _parent
     
-    def children = _children.toStream
+    def children = Stream() ++ _children
     
     def apply(s: Selector[Line]) = s(children)
     

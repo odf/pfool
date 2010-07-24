@@ -1,30 +1,25 @@
 package org.gavrog.pfool
 
 
-class Selector[T <: { def children: Iterable[T] }] {
-  def apply(roots: Iterable[T]) = roots.toSeq
+class Selector[T <: { def children: Iterable[T] }]
+               (f: Iterable[T] => Iterable[T])
+{
+  def apply = f
     
-  def apply(f: T => Iterable[T]): Selector[T] = {
-    val base = this
-    new Selector[T] {
-      override def apply(roots: Iterable[T]) = base(roots).flatMap(f)
-    }
-  }
+  def apply(f: T => Iterable[T]): Selector[T] =
+    new Selector[T](roots => this(roots).flatMap(f))
     
   def children = this(_.children)
 
-  private def desc(n: T): Stream[T] =
-    n.children.toStream.map(c => Stream.cons(c, desc(c))).flatten
+  private def desc(n: T): Iterable[T] =
+    n.children.flatMap(c => (Stream(c) ++ desc(c)))
     
   def descendants = this(desc(_))
 
-  def &(s: Selector[T]) = {
-    val base = this
-    new Selector[T] {
-      override def apply(roots: Iterable[T]) = s(base(roots))
-    }
-  }
-    
+  def &(s: Selector[T]) = new Selector[T](roots => s(this(roots)))
+  def |(s: Selector[T]) =
+    new Selector[T](roots => this(roots).toSet ++ s(roots))
+  
   def \(s: Selector[T]) = children & s
   def \\(s: Selector[T]) = descendants & s
     
@@ -33,10 +28,8 @@ class Selector[T <: { def children: Iterable[T] }] {
 }
 
 case class Filter[T <: { def children: Iterable[T] }](f: T => Boolean)
-	extends Selector[T]
+	extends Selector[T](roots => roots.filter(f))
 {
-  override def apply(roots: Iterable[T]) = roots.toSeq.filter(f)
-  	
   def unary_! = new Filter[T](!f(_))
 
   def |(m: T => Boolean) = new Filter[T](n => f(n) | m(n))
