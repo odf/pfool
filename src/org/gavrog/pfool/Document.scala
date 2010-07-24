@@ -16,7 +16,7 @@ object Document {
     	new Filter[Line](n => "(%s)$".format(p).r
     			.findPrefixOf(if (p.contains(" ")) n.text else n.key) != None)
     implicit def filtersFromString(p: String) = new Object {
-		private val regex = "(%s)$".format(p).r
+		  private val regex = "(%s)$".format(p).r
     	def matchesKey  = Filter[Line](n => regex.findPrefixOf(n.key)  != None)
     	def matchesArgs = Filter[Line](n => regex.findPrefixOf(n.args) != None)
     	def matchesText = Filter[Line](n => regex.findPrefixOf(n.text) != None)
@@ -81,14 +81,16 @@ class Document(theRoot: Line, init: Document => Unit) {
 	}
     
 	def extract(s: Selector[Line]) = {
-		def closure(marked: Set[Line], queue: Seq[Line]): Set[Line] =
-			if (queue.isEmpty) marked else {
-				val n = queue(0)
-				val q = queue.drop(1) ++ (if (marked(n)) Nil else n.parent)
-				closure(marked + n ++ n("[{}]"), q)
+		def closure(marked: Set[Line], queue: Stream[Line]): Set[Line] =
+			if (queue.isEmpty) marked
+			else {
+				val n = queue.head
+				val q = if (marked(n) || n.parent == None) queue.tail
+				        else Stream.cons(n.parent.get, queue.tail)
+				closure(marked ++ n("[{}]") + n, q)
 			}
       
-		cloneIf(closure(Set(), this(s) ++ this("version|figure")))
+		cloneIf(closure(Set(), Stream(this(s), this("version|figure")).flatten))
 	}
 	
 	private def adopt(node: Line, n: Int) {

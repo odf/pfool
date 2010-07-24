@@ -35,6 +35,8 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
     
     def children = _children.toStream
     
+    def apply(s: Selector[Line]) = s(children)
+    
     def nextSibling = parent match {
         case None => None
         case Some(n) => {

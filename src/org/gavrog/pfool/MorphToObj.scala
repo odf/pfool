@@ -45,7 +45,7 @@ object MorphToObj {
 			val byVertex = byGroup.flatMap(_._2).foldLeft(
 			  IntMap[List[Vec3]]())((m, e) => {
 				  val (i, v) = e
-				  m.update(i, v :: m.getOrElse(i, List[Vec3]()))
+				  m.updated(i, v :: m.getOrElse(i, List[Vec3]()))
 			  })
 			
 			val mesh = original.clone

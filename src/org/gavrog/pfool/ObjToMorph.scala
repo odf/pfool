@@ -37,7 +37,7 @@ object ObjToMorph {
 			  val n = pars(0).toInt
 			  val k = pars(1).toInt
 			  val pairs = (1 to k).map(i => (pars(i+1).toInt, pars(i+k+1).toDouble))
-			  current = current.update(n, new SparseVector(pairs :_*))
+			  current = current.updated(n, new SparseVector(pairs :_*))
 		  }
 		  case _ => println("?? " + cmd + "(" + pars.mkString(", ") + ")")
 	  	}
@@ -49,7 +49,7 @@ object ObjToMorph {
 	case class Delta(nr: Int, pos: Vec3) {
 	  override def toString =
 		  "d %d %.8f %.8f %.8f".format(nr, pos.x, pos.y, pos.z)
-	  def largeEnough = pos.exists(x => x.abs > 1e-5)
+	  def largeEnough = pos.toList.exists(x => x.abs > 1e-5)
 	}
 
 	def delta(v: Mesh.Vertex) = Delta(v.nr-1, v.pos)
@@ -74,7 +74,7 @@ object ObjToMorph {
 	
 	def findOrCreateActor(doc: Document, name: String) = {
 	  if (doc("actor " + name).isEmpty)
-	    doc("}").first insertBefore
+	    doc("}").head insertBefore
 			"""
 				actor %s
 				  {
@@ -84,14 +84,14 @@ object ObjToMorph {
 				  }
 			""".trim.format(name)
 	
-	  doc("actor " + name).first
+	  doc("actor " + name).head
 	}
 	
 	def writeDeltas(doc: Document, actorName: String, channelName: String,
 			morphName: String, allDeltas: Seq[Delta], isPBM: Boolean) {
 	  val deltas = allDeltas.filter(_.largeEnough)
 	
-	  findOrCreateActor(doc, actorName)("channels" \ "}").first insertBefore
+	  findOrCreateActor(doc, actorName)("channels" \ "}").head insertBefore
 	  """
 	    targetGeom %s
 	      {
@@ -120,8 +120,8 @@ object ObjToMorph {
 	    		deltas.size, allDeltas.length, deltas.mkString("\n"))
 	
 	  if (isPBM) {
-	    val ch = doc(("actor "+ actorName) \\ ("targetGeom "+ channelName)).first
-	    ch("indexes").first.insertBefore(
+	    val ch = doc(("actor "+ actorName) \\ ("targetGeom "+ channelName)).head
+	    ch("indexes").head.insertBefore(
 	      """
 					valueOpDeltaAdd
 					Figure
@@ -131,11 +131,11 @@ object ObjToMorph {
 				"""
 	      .trim.format(morphName)
 	    )
-	    ch("name").first.args = "PBM-" + morphName
-	    ch("hidden").first.args = "1"
-	    ch("forceLimits").first.args = "0"
-	    ch("min").first.args = "-10000"
-	    ch("max").first.args = "10000"
+	    ch("name").head.args = "PBM-" + morphName
+	    ch("hidden").head.args = "1"
+	    ch("forceLimits").head.args = "0"
+	    ch("min").head.args = "-10000"
+	    ch("max").head.args = "10000"
 	  }
 	}
 
@@ -161,7 +161,7 @@ object ObjToMorph {
 		  val isPBM  = actors.length > 1
 		
 		  if (isPBM) {
-		    findOrCreateActor(doc, "BODY")("channels" \ "}").first insertBefore
+		    findOrCreateActor(doc, "BODY")("channels" \ "}").head insertBefore
 		    """
 			    valueParm %s
 			      {
@@ -181,11 +181,11 @@ object ObjToMorph {
 			      blendType 0
 			      }
 		    """.trim.format(morphName, morphName)
-		    doc("version").first.insertAfter("createFullBodyMorph " + morphName)
+		    doc("version").head.insertAfter("createFullBodyMorph " + morphName)
       }
 		
 		  for (m <- actors) {
-		    val actorName = m.groups.next.name
+		    val actorName = m.groups.head.name
 		    val data = if (weights == null) m.vertices.map(delta).toList else {
 		      val current = weights(actorName)
 		      (for (i <- 0 to current.lastKey if current.contains(i))
