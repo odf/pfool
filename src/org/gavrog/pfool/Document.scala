@@ -88,6 +88,41 @@ class Document(theRoot: Line, init: Document => Unit) {
 		cloneIf(closure(Set(), this(s | "version|figure")))
 	}
 	
+	def merge(other: Document) {
+	  def selectorFor(v: Line): Selector[Line] =
+	    if (v.key == "actor") {
+	      if (v("channels").isEmpty)
+	        v.text \! "channels"
+	      else
+	        v.text \@ "channels"
+	    }
+	    else if (v.key.startsWith("valueOp"))
+	      v.key & new Filter(_.children.head.text == v.children.head.text)
+	    else if (v.key == "{" || v.key == "}")
+	      "\\" + v.key
+	    else if (v.children.isEmpty)
+	      v.key
+	    else
+	      v.text
+	  
+	  def merge(original: Line, mixin: Line): Unit =
+	    if (mixin.children.isEmpty)
+	      original.text = mixin.text
+	    else for (v <- mixin.children) {
+	      val w = original(selectorFor(v))
+	      if (w.isEmpty || v.key.startsWith("valueOp"))
+	        original("\\}").head.prependSibling(v.clone)
+	      else if (v.key == "sphereMatsRaw")
+	        w.head.replaceWith(v.clone)
+	      else
+	        merge(w.head, v)
+	    }
+	  
+	  this.fixCommands
+	  other.fixCommands
+	  merge(this.root, other.root)
+	}
+	
 	private def adopt(node: Line, n: Int) {
 		if (node.children.isEmpty)
 			for (i <- 1 to n) {
@@ -104,6 +139,7 @@ class Document(theRoot: Line, init: Document => Unit) {
     this("actor" \ "channels" \\ "valueOpTimes" ).foreach(adopt(_, 3))
     this("actor" \ "channels" \\ "valueOpDivideBy" ).foreach(adopt(_, 3))
     this("actor" \ "channels" \\ "valueOpDivideInto" ).foreach(adopt(_, 3))
+    this("actor" \ "channels" \\ "sphereMatsRaw" ).foreach(adopt(_, 9))
 		this("figure" \ "addChild").foreach(adopt(_, 1))
     this("figure" \ "weld").foreach(adopt(_, 1))
   }

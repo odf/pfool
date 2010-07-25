@@ -76,6 +76,11 @@ class Line(content: String, useCounter: Boolean) extends BasicNode {
         case None => ()
     }
 
+    def replaceWith(child: T) {
+      appendSibling(child)
+      unlink
+    }
+
     def insertBefore(input: Source) {
     	for (v <- Line.read(input)) prependSibling(v)
     }
