@@ -11,7 +11,7 @@ object Document {
     def fromString(text: String) = new Document(Source fromString text)
     def fromFile(filename: String) = new Document(Source fromFile filename)
     
-    implicit def filterFromUnit(u: Unit) = Filter[Line](n => true)
+    implicit def filterFromUnit(u: Unit) = Filter[Line](_ => true)
     implicit def filterFromString(p: String) =
     	new Filter[Line](n => "(%s)$".format(p).r
     			.findPrefixOf(if (p.contains(" ")) n.text else n.key) != None)
@@ -105,17 +105,24 @@ class Document(theRoot: Line, init: Document => Unit) {
 	    else
 	      v.text
 	  
+	  def insert(parent: Line, newChild: Line) {
+	    val pattern = newChild.key match {
+	      case _ => !()
+	    }
+	    parent(pattern | "\\}").head.prependSibling(newChild)
+	  }
+	  
 	  def merge(original: Line, mixin: Line): Unit =
 	    if (mixin.children.isEmpty)
 	      original.text = mixin.text
 	    else for (v <- mixin.children) {
-	      val w = original(selectorFor(v))
-	      if (w.isEmpty || v.key.startsWith("valueOp"))
-	        original("\\}").head.prependSibling(v.clone)
+	      val matches = original(selectorFor(v))
+	      if (matches.isEmpty || v.key.startsWith("valueOp"))
+	        insert(original, v.clone)
 	      else if (v.key == "sphereMatsRaw")
-	        w.head.replaceWith(v.clone)
+	        matches.head.replaceWith(v.clone)
 	      else
-	        merge(w.head, v)
+	        merge(matches.head, v)
 	    }
 	  
 	  this.fixCommands
