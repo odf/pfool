@@ -91,10 +91,11 @@ class Document(theRoot: Line, init: Document => Unit) {
 	def merge(other: Document) {
 	  def selectorFor(v: Line): Selector[Line] =
 	    if (v.key == "actor") {
+	      val pattern = v.text.split(":").head + "(:\\d+)?"
 	      if (v("channels").isEmpty)
-	        v.text \! "channels"
+	        pattern \! "channels"
 	      else
-	        v.text \@ "channels"
+	        pattern \@ "channels"
 	    }
 	    else if (v.key.startsWith("valueOp"))
 	      v.key & new Filter(_.children.head.text == v.children.head.text)
@@ -106,10 +107,10 @@ class Document(theRoot: Line, init: Document => Unit) {
 	      v.text
 	  
 	  def insert(parent: Line, newChild: Line) {
-	    val pattern = newChild.key match {
-	      case _ => !()
-	    }
-	    parent(pattern | "\\}").head.prependSibling(newChild)
+	    if (parent.key == "channels")
+	      parent(!("\\{" | "groups" | "PBMCC_.*")).head.prependSibling(newChild)
+	    else
+	      parent("\\}").head.prependSibling(newChild)
 	  }
 	  
 	  def merge(original: Line, mixin: Line): Unit =
