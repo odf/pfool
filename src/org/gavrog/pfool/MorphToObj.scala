@@ -22,6 +22,7 @@ object MorphToObj {
 		val original = new Mesh(Source fromFile args(0))
 		val doc  = Document.fromFile(args(1))
 		val pattern = args(2)
+    val factor = if (args.size > 3) args(3).toDouble else 1.0
 		val parts = verticesByGroup(original)
 		
 		val names = doc("actor" \\ ("targetGeom "+ pattern) \@ "deltas").map(_.args)
@@ -50,7 +51,7 @@ object MorphToObj {
 			
 			val mesh = original.clone
 			for ((i, list) <- byVertex)
-				mesh.vertex(i).pos += list.reduceLeft(_+_) / list.size
+				mesh.vertex(i).pos += list.reduceLeft(_+_) / list.size * factor
 			
 			mesh.write(new FileWriter(name + ".obj"), name)
 		}

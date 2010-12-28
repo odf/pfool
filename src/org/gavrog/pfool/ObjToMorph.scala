@@ -50,6 +50,7 @@ object ObjToMorph {
 	  override def toString =
 		  "d %d %.8f %.8f %.8f".format(nr, pos.x, pos.y, pos.z)
 	  def largeEnough = pos.toList.exists(x => x.abs > 1e-5)
+    def scaled(f: Double) = Delta(nr, pos * f)
 	}
 
 	def delta(v: Mesh.Vertex) = Delta(v.nr-1, v.pos)
@@ -88,7 +89,7 @@ object ObjToMorph {
 	}
 	
 	def writeDeltas(doc: Document, actorName: String, channelName: String,
-			morphName: String, allDeltas: Seq[Delta], isPBM: Boolean) {
+			morphName: String, allDeltas: Seq[Delta], isPBM: Boolean, factor: Double) {
 	  val deltas = allDeltas.filter(_.largeEnough)
 	
 	  findOrCreateActor(doc, actorName)("channels" \ "}").head insertBefore
@@ -117,7 +118,7 @@ object ObjToMorph {
 	      blendType 0
 	      }
 	    """.trim.format(channelName, morphName,
-	    		deltas.size, allDeltas.length, deltas.mkString("\n"))
+	    		deltas.size, allDeltas.length, deltas.map(_.scaled(factor)).mkString("\n"))
 	
 	  if (isPBM) {
 	    val ch = doc(("actor "+ actorName) \\ ("targetGeom "+ channelName)).head
@@ -146,8 +147,13 @@ object ObjToMorph {
 		val weights =
 			if (args(1) == "-w") readWeights(Source fromFile args(2)) else null
 		val doc = blankPoseFile(6)
-		val offset = if (template == null && weights == null) 0 else 2
-		
+		var offset = if (template == null && weights == null) 0 else 2
+    var factor = 1.0
+    if (args(offset + 1) == "-f") {
+      factor = args(offset + 2).toDouble
+      offset += 2
+    }
+
 		for (i <- (offset + 1) to args.size-1) {
 		  val mesh        = new Mesh(Source fromFile args(i))
 		  val morphName   = args(i).replaceFirst(".*/", "")
@@ -193,7 +199,7 @@ object ObjToMorph {
 				        .map(e => deltas.vertex(e._1 + 1).pos * e._2).reduceLeft(_+_))
 		      ).toList
 		    }
-		    writeDeltas(doc, actorName, channelName, morphName, data, isPBM)
+		    writeDeltas(doc, actorName, channelName, morphName, data, isPBM, factor)
 		  }
 		}
 		
