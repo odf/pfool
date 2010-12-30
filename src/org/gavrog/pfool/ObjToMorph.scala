@@ -140,7 +140,52 @@ object ObjToMorph {
 	  }
 	}
 
-	def main(args: Array[String]) {
+	def makeMorph(doc: Document, morphName: String, channelNr: Int,
+                deltas: Mesh, weights: Map[String, IntMap[SparseVector]],
+                factor: Double)
+  {
+    val actors = deltas.splitByGroup.filter(hasDeltas).toList
+    val isPBM = actors.length > 1
+		val channelName = "PBMCC_%02d" format channelNr
+
+    if (isPBM) {
+      findOrCreateActor(doc, "BODY")("channels" \ "}").head insertBefore
+              """
+             valueParm %s
+               {
+               name %s
+               initValue 0
+               hidden 0
+               forceLimits 1
+               min 0
+               max 1
+               trackingScale 0.02
+               keys
+                 {
+                 static 0
+                 k 0 0
+                 }
+               interpStyleLocked 0
+               blendType 0
+               }
+           """.trim.format(morphName, morphName)
+      doc("version").head.insertAfter("createFullBodyMorph " + morphName)
+    }
+
+    for (m <- actors) {
+      val actorName = m.groups.head.name
+      val data = if (weights == null) m.vertices.map(delta).toList else {
+        val current = weights(actorName)
+        (for (i <- 0 to current.lastKey if current.contains(i))
+        yield Delta(i, current(i).items
+                  .map(e => deltas.vertex(e._1 + 1).pos * e._2).reduceLeft(_ + _))
+                ).toList
+      }
+      writeDeltas(doc, actorName, channelName, morphName, data, isPBM, factor)
+    }
+  }
+
+  def main(args: Array[String]) {
 		val original = new Mesh(Source fromFile args(0))
 		val template =
 			if (args(1) == "-s") new Mesh(Source fromFile args(2)) else null
@@ -153,54 +198,49 @@ object ObjToMorph {
       factor = args(offset + 2).toDouble
       offset += 2
     }
+    var split = false
+    var margin = 0.0
+    if (args(offset + 1) == "-m") {
+      split = true
+      margin = args(offset + 2).toDouble
+      offset += 2
+    }
+    var channelNr = 1
 
 		for (i <- (offset + 1) to args.size-1) {
 		  val mesh        = new Mesh(Source fromFile args(i))
 		  val morphName   = args(i).replaceFirst(".*/", "")
                                .replaceFirst("\\.obj$", "")
-		  val channelName = "PBMCC_%02d" format (i - offset)
 		
 		  val morph  = if (template == null) mesh
 			       else template.withMorphApplied(mesh).subdivision
 		  val deltas = original.withDeltas(morph)
-		  val actors = deltas.splitByGroup.filter(hasDeltas).toList
-		  val isPBM  = actors.length > 1
-		
-		  if (isPBM) {
-		    findOrCreateActor(doc, "BODY")("channels" \ "}").head insertBefore
-		    """
-			    valueParm %s
-			      {
-			      name %s
-			      initValue 0
-			      hidden 0
-			      forceLimits 1
-			      min 0
-			      max 1
-			      trackingScale 0.02
-			      keys
-							{
-							static 0
-							k 0 0
-							}
-			      interpStyleLocked 0
-			      blendType 0
-			      }
-		    """.trim.format(morphName, morphName)
-		    doc("version").head.insertAfter("createFullBodyMorph " + morphName)
+
+      makeMorph(doc, morphName, channelNr, deltas, weights, factor)
+      channelNr += 1
+
+      if (split) {
+        val left = deltas.clone
+        val right = deltas.clone
+        for (v <- original.vertices) {
+          val delta = deltas.vertex(v.nr).pos
+          if (v.pos.x < -margin) {
+            left.vertex(v.nr).pos  = zero3
+            right.vertex(v.nr).pos = delta
+          }
+          else if (v.pos.x < margin) {
+            left.vertex(v.nr).pos  = delta * (margin + v.pos.x) / (2 * margin)
+            right.vertex(v.nr).pos = delta * (margin - v.pos.x) / (2 * margin)
+          } else {
+            left.vertex(v.nr).pos = delta
+            right.vertex(v.nr).pos = zero3
+          }
+        }
+
+        makeMorph(doc, morphName + "Left", channelNr, left, weights, factor)
+        makeMorph(doc, morphName + "Right", channelNr+1, right, weights, factor)
+        channelNr += 2
       }
-		
-		  for (m <- actors) {
-		    val actorName = m.groups.head.name
-		    val data = if (weights == null) m.vertices.map(delta).toList else {
-		      val current = weights(actorName)
-		      (for (i <- 0 to current.lastKey if current.contains(i))
-		         yield Delta(i, current(i).items
-				        .map(e => deltas.vertex(e._1 + 1).pos * e._2).reduceLeft(_+_))
-		      ).toList
-		    }
-		    writeDeltas(doc, actorName, channelName, morphName, data, isPBM, factor)
-		  }
 		}
 		
 		doc.writeTo(System.out)
