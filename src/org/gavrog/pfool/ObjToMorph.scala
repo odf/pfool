@@ -6,7 +6,7 @@ import Vectors._
 import Document._
 
 import scala.io.Source
-import scala.collection.immutable.IntMap
+import collection.immutable.{Queue, IntMap}
 
 object ObjToMorph {
   implicit def asSource(s: String) = Source.fromString(s)
@@ -142,11 +142,14 @@ object ObjToMorph {
 
 	def makeMorph(doc: Document, morphName: String, channelNr: Int,
                 deltas: Mesh, weights: Map[String, IntMap[SparseVector]],
-                factor: Double)
+                factor: Double, asExpression: Boolean)
   {
-    val actors = deltas.splitByGroup.filter(hasDeltas).toList
+    def extra(m: Mesh) =
+      if (asExpression) m.groups.head.name == "head" else true
+    val actors = deltas.splitByGroup.filter(hasDeltas).filter(extra).toList
     val isPBM = actors.length > 1
-		val channelName = "PBMCC_%02d" format channelNr
+		val channelName =
+      if (asExpression) morphName else "PBMCC_%02d" format channelNr
 
     if (isPBM) {
       findOrCreateActor(doc, "BODY")("channels" \ "}").head insertBefore
@@ -185,38 +188,56 @@ object ObjToMorph {
     }
   }
 
+
   def main(args: Array[String]) {
-		val original = new Mesh(Source fromFile args(0))
-		val template =
-			if (args(1) == "-s") new Mesh(Source fromFile args(2)) else null
-		val weights =
-			if (args(1) == "-w") readWeights(Source fromFile args(2)) else null
-		val doc = blankPoseFile(6)
-		var offset = if (template == null && weights == null) 0 else 2
+    var arguments = Queue[String]()
+    var template: Mesh = null
+    var weights: Map[String, IntMap[SparseVector]] = null
     var factor = 1.0
-    if (args(offset + 1) == "-f") {
-      factor = args(offset + 2).toDouble
-      offset += 2
-    }
     var split = false
     var margin = 0.0
-    if (args(offset + 1) == "-m") {
-      split = true
-      margin = args(offset + 2).toDouble
-      offset += 2
+    var asExpression = false
+
+    var i = 0
+    while (i < args.size) {
+      args(i) match {
+        case "-s" => {
+          i += 1
+          template = new Mesh(Source fromFile args(i))
+        }
+        case "-w" => {
+          i += 1
+          weights = readWeights(Source fromFile args(i))
+        }
+        case "-f" => {
+          i += 1
+          factor = args(i).toDouble
+        }
+        case "-m" => {
+          i += 1
+          split = true
+          margin = args(i).toDouble
+        }
+        case "-x" => asExpression = true
+        case _ => arguments += args(i)
+      }
+      i += 1
     }
+
+		val original = new Mesh(Source fromFile arguments.head)
+		val doc = blankPoseFile(6)
     var channelNr = 1
 
-		for (i <- (offset + 1) to args.size-1) {
-		  val mesh        = new Mesh(Source fromFile args(i))
-		  val morphName   = args(i).replaceFirst(".*/", "")
-                               .replaceFirst("\\.obj$", "")
+		for (arg <- arguments.tail) {
+		  val mesh      = new Mesh(Source fromFile arg)
+		  val morphName = arg.replaceFirst(".*/", "").replaceFirst("\\.obj$", "")
 		
 		  val morph  = if (template == null) mesh
 			       else template.withMorphApplied(mesh).subdivision
 		  val deltas = original.withDeltas(morph)
 
-      makeMorph(doc, morphName, channelNr, deltas, weights, factor)
+      makeMorph(doc, morphName, channelNr, deltas,
+        weights, factor, asExpression)
       channelNr += 1
 
       if (split) {
@@ -237,8 +258,10 @@ object ObjToMorph {
           }
         }
 
-        makeMorph(doc, morphName + "Left", channelNr, left, weights, factor)
-        makeMorph(doc, morphName + "Right", channelNr+1, right, weights, factor)
+        makeMorph(doc, morphName + "Left", channelNr, left,
+          weights, factor, asExpression)
+        makeMorph(doc, morphName + "Right", channelNr+1, right,
+          weights, factor, asExpression)
         channelNr += 2
       }
 		}
