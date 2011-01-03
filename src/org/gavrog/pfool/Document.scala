@@ -120,7 +120,7 @@ class Document(theRoot: Line, init: Document => Unit) {
 	      val matches = original(selectorFor(v))
 	      if (matches.isEmpty || v.key.startsWith("valueOp"))
 	        insert(original, v.clone)
-	      else if (v.key == "sphereMatsRaw")
+	      else if (v.key == "sphereMatsRaw" || v.key == "deltas")
 	        matches.head.replaceWith(v.clone)
 	      else
 	        merge(matches.head, v)
